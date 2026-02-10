@@ -9,15 +9,13 @@ export default defineConfig({
       entry: 'src/main.ts',
       userscript: {
         name: 'e-hentai Plus',
-        'name:zh-CN': 'E-Hentai Plus',
         namespace: 'http://tampermonkey.net/',
-        homepageURL: 'https://github.com/Leovikii/sm/tree/main/js',
+        homepageURL: 'https://github.com/Leovikii/e-hentai-plus',
         version: '2.2',
         description: 'Continuous reading mode with floating page control and ultra-fast loading',
-        'description:zh-CN': 'E-Hentai 的增强型连续阅读模式，具有高级功能和优化。',
         author: 'Viki',
-        updateURL: 'https://raw.githubusercontent.com/Leovikii/sm/refs/heads/main/js/e-hentai%20Plus.js',
-        downloadURL: 'https://raw.githubusercontent.com/Leovikii/sm/refs/heads/main/js/e-hentai%20Plus.js',
+        updateURL: 'https://github.com/Leovikii/e-hentai-plus/releases/latest/download/e-hentai-plus.user.js',
+        downloadURL: 'https://github.com/Leovikii/e-hentai-plus/releases/latest/download/e-hentai-plus.user.js',
         match: [
           'https://e-hentai.org/g/*',
           'https://exhentai.org/g/*',
