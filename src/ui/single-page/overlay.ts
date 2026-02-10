@@ -67,7 +67,6 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       return;
     }
 
-    // Image fully loaded — show immediately
     if (isImageReady(img)) {
       removePlaceholder();
       currentImage.src = img.src;
@@ -75,7 +74,6 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       return;
     }
 
-    // Image not ready yet (src may or may not be set) — show placeholder and poll
     showPlaceholder();
     scrollbar.update();
     startLoadPoll(idx);
@@ -90,6 +88,13 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
         clearLoadPoll();
         return;
       }
+
+      const freshImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+      if (freshImages.length !== store.allImages.length) {
+        store.allImages = freshImages;
+        scrollbar.update();
+      }
+
       const img = store.allImages[idx];
       if (img && isImageReady(img)) {
         clearLoadPoll();
@@ -205,21 +210,28 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
 
         deps.onLoadNextPage(links, doc);
 
-        // Watch for new .r-img elements via MutationObserver
         const mainBox = document.querySelector('#gdt');
         if (mainBox) {
-          const prevCount = store.allImages.length;
+          const expectedTotal = store.allImages.length + links.length;
           const obs = new MutationObserver(() => {
             const newImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-            if (newImages.length > prevCount) {
+            if (newImages.length !== store.allImages.length) {
               store.allImages = newImages;
               scrollbar.update();
+            }
+            if (newImages.length >= expectedTotal) {
               obs.disconnect();
             }
           });
           obs.observe(mainBox, { childList: true, subtree: true });
-          // Safety timeout: disconnect after 10s to avoid leaks
-          setTimeout(() => obs.disconnect(), 10000);
+          setTimeout(() => {
+            obs.disconnect();
+            const finalImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+            if (finalImages.length !== store.allImages.length) {
+              store.allImages = finalImages;
+              scrollbar.update();
+            }
+          }, 30000);
         }
 
         store.nextUrl = getNextUrl(doc);

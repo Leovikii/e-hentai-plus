@@ -1,4 +1,5 @@
 import { store } from '../../state/store';
+import { qa } from '../../utils/dom';
 
 export interface NavigationDeps {
   overlay: HTMLElement;
@@ -13,9 +14,25 @@ export function setupNavigation(deps: NavigationDeps): {
   nextImage: () => void;
   previousImage: () => void;
 } {
+  function hasLoadingPlaceholders(): boolean {
+    return document.querySelectorAll('.r-ph').length > 0;
+  }
+
+  function syncAllImages(): void {
+    const freshImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+    if (freshImages.length !== store.allImages.length) {
+      store.allImages = freshImages;
+    }
+  }
+
   function nextImage(): void {
+    syncAllImages();
+
     if (store.currentImageIndex < store.allImages.length - 1) {
       store.currentImageIndex++;
+      deps.updateImage();
+      deps.checkAndLoadNextPage();
+    } else if (hasLoadingPlaceholders()) {
       deps.updateImage();
       deps.checkAndLoadNextPage();
     } else {
