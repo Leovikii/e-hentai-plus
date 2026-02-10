@@ -16,8 +16,7 @@ Enhanced continuous reading mode for E-Hentai / ExHentai with floating controls 
 ## Installation
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) browser extension
-2. Install the userscript from [Greasy Fork](https://greasyfork.org/) or build from source
-
+2. Install the userscript from [Sleazy Fork](https://sleazyfork.org/zh-CN/scripts/565718-e-hentai-plus) or [Github release](https://github.com/Leovikii/e-hentai-plus/releases/latest/download/e-hentai-plus.user.js)
 ## Build from Source
 
 ```bash
