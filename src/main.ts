@@ -47,6 +47,7 @@ import { registerMenuCommands } from './menu-commands';
     close: () => spmHandle.close(),
     isActive: () => spmHandle.isActive(),
     getOverlayElement: () => spmHandle.getOverlayElement(),
+    jumpTo: (index: number) => spmHandle.jumpTo(index),
   });
 
   spmHandle = initSinglePageMode();

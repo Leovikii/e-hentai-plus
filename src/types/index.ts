@@ -18,4 +18,5 @@ export interface SinglePageModeHandle {
   close: () => void;
   isActive: () => boolean;
   getOverlayElement: () => HTMLElement;
+  jumpTo: (index: number) => void;
 }

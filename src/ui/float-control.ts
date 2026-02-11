@@ -1,5 +1,5 @@
 import { store } from '../state/store';
-import { svgReader, svgPlay, svgPause, svgSettings } from '../utils/icons';
+import { svgReader, svgPlay, svgPause, svgSettings, svgTop } from '../utils/icons';
 import { createSettingsPanel } from './settings-panel';
 import type { SinglePageModeHandle } from '../types';
 
@@ -25,7 +25,8 @@ export function createFloatControl(spmHandle: SinglePageModeHandle): void {
   circleControl.className = 'circle-control';
   circleControl.innerHTML = svgReader;
   circleControl.title = 'Reader Mode';
-  circleControl.onclick = () => {
+  circleControl.onclick = (e) => {
+    if (e.target !== circleControl && !circleControl.querySelector('svg')?.contains(e.target as Node)) return;
     if (spmHandle.isActive()) {
       spmHandle.close();
       autoPlayBtn.classList.add('hidden');
@@ -45,7 +46,22 @@ export function createFloatControl(spmHandle: SinglePageModeHandle): void {
   settingsBtn.innerHTML = svgSettings;
   settingsBtn.title = 'Settings';
 
-  // Assemble horizontally: [play] [circle] [settings]
+  // Back to top button (above the control bar)
+  const topBtn = document.createElement('div');
+  topBtn.className = 'side-btn top-btn';
+  topBtn.innerHTML = svgTop;
+  topBtn.title = 'Back to Top';
+  topBtn.onclick = (e) => {
+    e.stopPropagation();
+    if (spmHandle.isActive()) {
+      spmHandle.jumpTo(0);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Assemble horizontally: [play] [circle] [settings], with top button above circle
+  circleControl.appendChild(topBtn);
   floatControl.appendChild(autoPlayBtn);
   floatControl.appendChild(circleControl);
   floatControl.appendChild(settingsBtn);
