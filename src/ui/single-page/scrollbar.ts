@@ -1,4 +1,5 @@
 import { store } from '../../state/store';
+import { createThumbnailPanel } from './thumbnail-panel';
 
 export interface ScrollbarHandle {
   update: () => void;
@@ -17,6 +18,10 @@ export function createScrollbar(onIndexChange: (index: number) => void): Scrollb
 
   pageIndicator.appendChild(scrollbarThumb);
   pageIndicator.appendChild(scrollbarLabel);
+
+  const thumbPanel = createThumbnailPanel(onIndexChange);
+  pageIndicator.appendChild(thumbPanel.getElement());
+  scrollbarLabel.style.display = 'none';
 
   function update(): void {
     if (store.allImages.length === 0) return;
@@ -39,11 +44,13 @@ export function createScrollbar(onIndexChange: (index: number) => void): Scrollb
     scrollbarThumb.style.height = `${thumbHeight}px`;
     scrollbarThumb.style.top = `${thumbTop}px`;
     scrollbarLabel.textContent = `${store.currentImageIndex + 1} / ${store.allImages.length}`;
+    thumbPanel.update();
   }
 
   // Click to seek
   pageIndicator.onclick = (e) => {
     if (e.target === scrollbarThumb) return;
+    if (thumbPanel.getElement().contains(e.target as Node)) return;
     const rect = pageIndicator.getBoundingClientRect();
     const clickY = e.clientY - rect.top;
     const scrollProgress = Math.min(1, Math.max(0, clickY / rect.height));
