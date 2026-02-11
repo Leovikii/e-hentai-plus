@@ -244,10 +244,18 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     }
   }
 
+  function jumpTo(index: number): void {
+    if (!overlay.classList.contains('active')) return;
+    store.currentImageIndex = Math.max(0, Math.min(index, store.allImages.length - 1));
+    updateImage();
+    autoPlay.reset();
+  }
+
   return {
     open,
     close,
     isActive: () => overlay.classList.contains('active'),
     getOverlayElement: () => overlay,
+    jumpTo,
   };
 }
