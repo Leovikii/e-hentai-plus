@@ -15,7 +15,7 @@ html, body { background-color: #111 !important; color: #ccc !important; margin: 
 .retry-btn:hover { background: #555; }
 
 /* Float control — horizontal: [play] [circle] [settings] */
-.float-control { position: fixed; right: 30px; bottom: 30px; z-index: 9999; display: flex; flex-direction: row; align-items: center; gap: 0; transition: opacity 0.3s; -webkit-user-select: none; user-select: none; }
+.float-control { position: fixed; right: 30px; bottom: 30px; z-index: 9999; display: flex; flex-direction: row; align-items: center; transition: opacity 0.3s; -webkit-user-select: none; user-select: none; }
 .float-control.hidden { opacity: 0; pointer-events: none; }
 
 /* Top button (above the circle control) */
@@ -73,7 +73,6 @@ html, body { background-color: #111 !important; color: #ccc !important; margin: 
 .sp-scrollbar-thumb:active { cursor: grabbing; background: rgba(255,255,255,0.7); }
 .sp-scrollbar-label { position: absolute; right: calc(100% + 16px); top: 50%; transform: translateY(-50%); background: rgba(26,26,26,0.95); padding: 8px 14px; border-radius: 8px; color: #fff; font-family: monospace; font-size: 14px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
 .sp-scrollbar:hover .sp-scrollbar-label { opacity: 1; }
-.sp-loading { color: #888; font-size: 18px; font-family: sans-serif; }
 
 /* Thumbnail panel */
 .sp-thumb-panel { position: absolute; right: calc(100% + 12px); top: 50%; transform: translateY(-50%); width: 116px; background: rgba(20,20,20,0.95); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 16px rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 11; overflow: hidden; }

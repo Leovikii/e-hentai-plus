@@ -1,4 +1,5 @@
 import { store } from '../../state/store';
+import { isImageReady } from '../../utils/dom';
 
 export interface ThumbnailPanelHandle {
   update: () => void;
@@ -46,10 +47,6 @@ export function createThumbnailPanel(
     return Math.max(0, store.allImages.length * ITEM_HEIGHT - vpHeight());
   }
 
-  function isReady(img: HTMLImageElement): boolean {
-    return !!(img && img.src && !img.src.includes('data:') && img.complete && img.naturalWidth > 0);
-  }
-
   function acquireItem(): HTMLElement {
     return itemPool.pop() || (() => {
       const el = document.createElement('div');
@@ -68,7 +65,7 @@ export function createThumbnailPanel(
     el.classList.toggle('sp-thumb-active', index === store.currentImageIndex);
 
     const img = store.allImages[index];
-    if (img && isReady(img)) {
+    if (img && isImageReady(img)) {
       let thumbImg = el.querySelector('img') as HTMLImageElement | null;
       if (!thumbImg) {
         el.innerHTML = '';

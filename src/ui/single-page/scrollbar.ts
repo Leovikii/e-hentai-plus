@@ -23,10 +23,19 @@ export function createScrollbar(onIndexChange: (index: number) => void): Scrollb
   pageIndicator.appendChild(thumbPanel.getElement());
   scrollbarLabel.style.display = 'none';
 
+  let cachedTrackHeight = 0;
+
+  function refreshTrackHeight(): void {
+    cachedTrackHeight = pageIndicator.offsetHeight;
+  }
+
+  window.addEventListener('resize', refreshTrackHeight, { passive: true });
+
   function update(): void {
     if (store.allImages.length === 0) return;
 
-    const trackHeight = pageIndicator.offsetHeight;
+    if (!cachedTrackHeight) refreshTrackHeight();
+    const trackHeight = cachedTrackHeight;
     let thumbHeight: number;
 
     if (store.allImages.length <= 10) {
@@ -78,7 +87,7 @@ export function createScrollbar(onIndexChange: (index: number) => void): Scrollb
     if (!isDragging) return;
     const deltaY = e.clientY - dragStartY;
     const newTop = thumbStartTop + deltaY;
-    const trackHeight = pageIndicator.offsetHeight;
+    const trackHeight = cachedTrackHeight;
     const thumbHeight = scrollbarThumb.offsetHeight;
     const maxTop = trackHeight - thumbHeight;
     const clampedTop = Math.max(0, Math.min(maxTop, newTop));

@@ -26,7 +26,10 @@ export function setupNavigation(deps: NavigationDeps): {
   }
 
   function nextImage(): void {
-    syncAllImages();
+    // Only sync DOM when near the end where new images may have appeared
+    if (store.currentImageIndex >= store.allImages.length - 3) {
+      syncAllImages();
+    }
 
     if (store.currentImageIndex < store.allImages.length - 1) {
       store.currentImageIndex++;

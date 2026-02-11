@@ -1,5 +1,5 @@
 import { store } from '../../state/store';
-import { qa } from '../../utils/dom';
+import { qa, isImageReady, fetchPageLinks } from '../../utils/dom';
 import { getNextUrl } from '../../services/page-parser';
 import { createScrollbar } from './scrollbar';
 import { setupNavigation } from './navigation';
@@ -26,15 +26,16 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   imageContainer.appendChild(currentImage);
 
   let loadPollTimer: ReturnType<typeof setInterval> | null = null;
-
-  function isImageReady(img: HTMLImageElement): boolean {
-    return !!(img && img.src && !img.src.includes('data:') && img.complete && img.naturalWidth > 0);
-  }
+  let loadObserver: MutationObserver | null = null;
 
   function clearLoadPoll(): void {
     if (loadPollTimer) {
       clearInterval(loadPollTimer);
       loadPollTimer = null;
+    }
+    if (loadObserver) {
+      loadObserver.disconnect();
+      loadObserver = null;
     }
   }
 
@@ -83,18 +84,8 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     const wasAutoPlaying = !!store.autoPlayTimer;
     if (wasAutoPlaying) autoPlay.stop();
 
-    loadPollTimer = setInterval(() => {
-      if (store.currentImageIndex !== idx) {
-        clearLoadPoll();
-        return;
-      }
-
-      const freshImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-      if (freshImages.length !== store.allImages.length) {
-        store.allImages = freshImages;
-        scrollbar.update();
-      }
-
+    function onImageReady(): void {
+      if (store.currentImageIndex !== idx) return;
       const img = store.allImages[idx];
       if (img && isImageReady(img)) {
         clearLoadPoll();
@@ -103,7 +94,39 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
         scrollbar.update();
         if (wasAutoPlaying && store.settings.autoPlay) autoPlay.start();
       }
-    }, 200);
+    }
+
+    // Watch for the target image becoming ready via load event
+    const img = store.allImages[idx];
+    if (img) {
+      img.addEventListener('load', onImageReady, { once: true });
+    }
+
+    // Watch for new images appearing in DOM (auto-scroll adding pages)
+    const mainBox = document.querySelector('#gdt');
+    if (mainBox) {
+      loadObserver = new MutationObserver(() => {
+        if (store.currentImageIndex !== idx) { clearLoadPoll(); return; }
+        const freshImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+        if (freshImages.length !== store.allImages.length) {
+          store.allImages = freshImages;
+          scrollbar.update();
+          // If the target image now exists, listen for its load
+          const newImg = store.allImages[idx];
+          if (newImg && !img) {
+            newImg.addEventListener('load', onImageReady, { once: true });
+            if (isImageReady(newImg)) onImageReady();
+          }
+        }
+      });
+      loadObserver.observe(mainBox, { childList: true, subtree: true });
+    }
+
+    // Fallback poll at lower frequency for edge cases (e.g. cached images that don't fire load)
+    loadPollTimer = setInterval(() => {
+      if (store.currentImageIndex !== idx) { clearLoadPoll(); return; }
+      onImageReady();
+    }, 1000);
   }
 
   // Wire up sub-modules (forward declarations resolved via closures)
@@ -203,10 +226,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     if (remainingImages <= 10) {
       store.isFetching = true;
 
-      const parser = new DOMParser();
-      fetch(store.nextUrl).then(r => r.text()).then(html => {
-        const doc = parser.parseFromString(html, 'text/html');
-        const links = Array.from(qa('#gdt a', doc)).map(a => (a as HTMLAnchorElement).href);
+      fetchPageLinks(store.nextUrl).then(({ doc, links }) => {
 
         deps.onLoadNextPage(links, doc);
 

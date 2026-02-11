@@ -1,5 +1,5 @@
 import { store } from '../state/store';
-import { qa } from '../utils/dom';
+import { fetchPageLinks } from '../utils/dom';
 import { CFG } from '../state/config';
 import { getNextUrl } from '../services/page-parser';
 import { loadImageWithRetry, createRetryHandler } from '../services/image-loader';
@@ -66,14 +66,10 @@ export function setupAutoScroll(): void {
   const scrollSent = document.createElement('div');
   document.body.appendChild(scrollSent);
 
-  const parser = new DOMParser();
-
   const pageObs = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting && store.nextUrl && !store.isFetching && store.settings.autoScroll) {
       store.isFetching = true;
-      fetch(store.nextUrl).then(r => r.text()).then(html => {
-        const doc = parser.parseFromString(html, 'text/html');
-        const links = Array.from(qa('#gdt a', doc)).map(a => (a as HTMLAnchorElement).href);
+      fetchPageLinks(store.nextUrl).then(({ doc, links }) => {
         const nUrl = getNextUrl(doc);
 
         store.currPage++;

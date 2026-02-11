@@ -12,3 +12,17 @@ export function hideOriginalElements(): void {
     if (el) el.style.display = 'none';
   });
 }
+
+export function isImageReady(img: HTMLImageElement): boolean {
+  return !!(img && img.src && !img.src.includes('data:') && img.complete && img.naturalWidth > 0);
+}
+
+const sharedParser = new DOMParser();
+
+export function fetchPageLinks(url: string): Promise<{ doc: Document; links: string[] }> {
+  return fetch(url).then(r => r.text()).then(html => {
+    const doc = sharedParser.parseFromString(html, 'text/html');
+    const links = Array.from(qa('#gdt a', doc)).map(a => (a as HTMLAnchorElement).href);
+    return { doc, links };
+  });
+}
