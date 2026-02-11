@@ -1,6 +1,6 @@
 import { store } from '../state/store';
 import { CFG } from '../state/config';
-import { qa } from '../utils/dom';
+import { fetchPageLinks } from '../utils/dom';
 import { loadImageWithRetry } from './image-loader';
 
 const prefetchedUrls = new Set<string>();
@@ -17,11 +17,7 @@ export function prefetchNextPage(): void {
     store.nextPagePrefetched = true;
     prefetchedUrls.add(store.nextUrl);
 
-    const parser = new DOMParser();
-    fetch(store.nextUrl).then(r => r.text()).then(html => {
-      const doc = parser.parseFromString(html, 'text/html');
-      const links = Array.from(qa('#gdt a', doc)).map(a => (a as HTMLAnchorElement).href);
-
+    fetchPageLinks(store.nextUrl).then(({ links }) => {
       links.forEach(url => {
         loadImageWithRetry(url).then(imgSrc => {
           if (imgSrc) {

@@ -1,3 +1,6 @@
+/* Theme */
+:root { --accent: #F596AA; --accent-hover: #F7ABBE; }
+
 /* Base styles */
 html, body { background-color: #111 !important; color: #ccc !important; margin: 0; overflow-x: hidden; }
 #gdt { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 1200px; margin: auto; padding-bottom: 100px; }
@@ -12,7 +15,7 @@ html, body { background-color: #111 !important; color: #ccc !important; margin: 
 .retry-btn:hover { background: #555; }
 
 /* Float control — horizontal: [play] [circle] [settings] */
-.float-control { position: fixed; right: 30px; bottom: 30px; z-index: 9999; display: flex; flex-direction: row; align-items: center; gap: 0; transition: opacity 0.3s; -webkit-user-select: none; user-select: none; }
+.float-control { position: fixed; right: 30px; bottom: 30px; z-index: 9999; display: flex; flex-direction: row; align-items: center; transition: opacity 0.3s; -webkit-user-select: none; user-select: none; }
 .float-control.hidden { opacity: 0; pointer-events: none; }
 
 /* Top button (above the circle control) */
@@ -25,8 +28,8 @@ html, body { background-color: #111 !important; color: #ccc !important; margin: 
 .float-control:hover .side-btn { opacity: 1; pointer-events: auto; }
 .side-btn:hover { background: #555; transform: scale(1.1); }
 .side-btn svg { width: 18px; height: 18px; fill: #fff; }
-.side-btn.active { background: #4CAF50; }
-.side-btn.active:hover { background: #5CBF60; }
+.side-btn.active { background: var(--accent); }
+.side-btn.active:hover { background: var(--accent-hover); }
 .auto-play-btn.hidden { display: none; }
 
 /* Circle control — reader mode button */
@@ -46,7 +49,7 @@ html, body { background-color: #111 !important; color: #ccc !important; margin: 
 
 /* Toggle switch */
 .toggle-switch { width: 40px; height: 20px; background: #333; border-radius: 10px; position: relative; cursor: pointer; transition: background 0.3s; }
-.toggle-switch.on { background: #4CAF50; }
+.toggle-switch.on { background: var(--accent); }
 .toggle-slider { width: 16px; height: 16px; background: #fff; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: left 0.3s; }
 .toggle-switch.on .toggle-slider { left: 22px; }
 
@@ -70,7 +73,19 @@ html, body { background-color: #111 !important; color: #ccc !important; margin: 
 .sp-scrollbar-thumb:active { cursor: grabbing; background: rgba(255,255,255,0.7); }
 .sp-scrollbar-label { position: absolute; right: calc(100% + 16px); top: 50%; transform: translateY(-50%); background: rgba(26,26,26,0.95); padding: 8px 14px; border-radius: 8px; color: #fff; font-family: monospace; font-size: 14px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
 .sp-scrollbar:hover .sp-scrollbar-label { opacity: 1; }
-.sp-loading { color: #888; font-size: 18px; font-family: sans-serif; }
+
+/* Thumbnail panel */
+.sp-thumb-panel { position: absolute; right: calc(100% + 12px); top: 50%; transform: translateY(-50%); width: 116px; background: rgba(20,20,20,0.95); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 16px rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 11; overflow: hidden; }
+.sp-scrollbar:hover .sp-thumb-panel, .sp-thumb-panel:hover { opacity: 1; pointer-events: auto; }
+.sp-scrollbar::before { content: ''; position: absolute; right: 100%; top: 0; width: 140px; height: 100%; }
+.sp-thumb-viewport { width: 100%; max-height: 80vh; overflow: hidden; position: relative; }
+.sp-thumb-content { position: relative; width: 100%; }
+.sp-thumb-item { position: absolute; left: 8px; width: 100px; height: 72px; border-radius: 4px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: border-color 0.15s; box-sizing: border-box; }
+.sp-thumb-item:hover { border-color: rgba(255,255,255,0.4); }
+.sp-thumb-item.sp-thumb-active { border-color: var(--accent); }
+.sp-thumb-img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.sp-thumb-ph { width: 100%; height: 100%; background: #222; display: flex; align-items: center; justify-content: center; color: #555; font-family: monospace; font-size: 13px; -webkit-user-select: none; user-select: none; }
+.sp-thumb-counter { padding: 8px 0; text-align: center; color: #999; font-family: monospace; font-size: 13px; border-top: 1px solid rgba(255,255,255,0.08); -webkit-user-select: none; user-select: none; }
 
 /* Single page loading placeholder */
 .sp-placeholder { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; }

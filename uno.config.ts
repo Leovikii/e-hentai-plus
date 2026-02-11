@@ -12,7 +12,7 @@ export default defineConfig({
       'eh-border': '#555',
       'eh-text': '#ccc',
       'eh-text-dim': '#888',
-      'eh-accent': '#4CAF50',
+      'eh-accent': '#F596AA',
       'eh-error': '#d44',
     },
   },
