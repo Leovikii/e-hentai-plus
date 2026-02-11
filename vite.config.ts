@@ -14,7 +14,7 @@ export default defineConfig({
         },
         namespace: 'http://tampermonkey.net/',
         homepageURL: 'https://github.com/Leovikii/e-hentai-plus',
-        version: '2.2.3',
+        version: '2.3.0',
         description: {
           '': 'Infinite scroll & reader mode with image prefetch and floating controls for E-Hentai / ExHentai',
           'zh-CN': '为 E-Hentai / ExHentai 提供无限滚动和阅读模式，支持图片预取与悬浮控制',
