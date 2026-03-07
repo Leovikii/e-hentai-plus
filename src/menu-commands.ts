@@ -2,6 +2,12 @@ import { GM_registerMenuCommand } from '$';
 import { store } from './state/store';
 
 export function registerMenuCommands(): void {
+  GM_registerMenuCommand('Toggle Scroll Mode', () => {
+    store.updateSetting('scrollMode', !store.settings.scrollMode);
+    alert(`Scroll Mode ${store.settings.scrollMode ? 'Enabled' : 'Disabled'}`);
+    location.reload();
+  });
+
   GM_registerMenuCommand('Toggle Auto Scroll', () => {
     store.updateSetting('autoScroll', !store.settings.autoScroll);
     alert(`Auto Scroll ${store.settings.autoScroll ? 'Enabled' : 'Disabled'}`);

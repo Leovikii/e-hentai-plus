@@ -1,8 +1,8 @@
 export interface UserSettings {
+  scrollMode: boolean;
   autoScroll: boolean;
   showControl: boolean;
   autoEnterSinglePage: boolean;
-  autoPlay: boolean;
   autoPlayInterval: number;
 }
 
@@ -11,6 +11,9 @@ export interface AppConfig {
   prefetchDistance: number;
   maxRetries: number;
   retryDelay: number;
+  maxConcurrent: number;
+  requestSpacing: number;
+  imageLoadTimeout: number;
 }
 
 export interface SinglePageModeHandle {

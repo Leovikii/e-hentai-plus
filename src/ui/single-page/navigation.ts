@@ -5,6 +5,7 @@ export interface NavigationDeps {
   overlay: HTMLElement;
   updateImage: () => void;
   checkAndLoadNextPage: () => void;
+  checkAndLoadPrevPage: () => void;
   resetAutoPlay: () => void;
   stopAutoPlayAtEnd: () => void;
   closeSinglePageMode: () => void;
@@ -40,7 +41,7 @@ export function setupNavigation(deps: NavigationDeps): {
       deps.checkAndLoadNextPage();
     } else {
       deps.checkAndLoadNextPage();
-      if (store.settings.autoPlay) {
+      if (store.autoPlay) {
         deps.stopAutoPlayAtEnd();
       }
     }
@@ -50,9 +51,12 @@ export function setupNavigation(deps: NavigationDeps): {
     if (store.currentImageIndex > 0) {
       store.currentImageIndex--;
       deps.updateImage();
-      if (store.settings.autoPlay) {
+      if (store.autoPlay) {
         deps.resetAutoPlay();
       }
+    }
+    if (store.currentImageIndex <= 3) {
+      deps.checkAndLoadPrevPage();
     }
   }
 

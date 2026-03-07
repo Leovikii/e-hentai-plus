@@ -7,10 +7,11 @@ export interface SettingsPanelHandle {
 
 interface SettingItem {
   label: string;
-  key: keyof Pick<typeof store.settings, 'showControl' | 'autoScroll' | 'autoEnterSinglePage'>;
+  key: keyof Pick<typeof store.settings, 'scrollMode' | 'showControl' | 'autoScroll' | 'autoEnterSinglePage'>;
 }
 
 const SETTINGS: SettingItem[] = [
+  { label: 'Scroll Mode', key: 'scrollMode' },
   { label: 'Show Control', key: 'showControl' },
   { label: 'Auto Scroll', key: 'autoScroll' },
   { label: 'Auto Enter Reader', key: 'autoEnterSinglePage' },

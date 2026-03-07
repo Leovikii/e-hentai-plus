@@ -1,9 +1,9 @@
 /* Theme */
 :root { --accent: #F596AA; --accent-hover: #F7ABBE; }
 
-/* Base styles */
-html, body { background-color: #111 !important; color: #ccc !important; margin: 0; overflow-x: hidden; }
-#gdt { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 1200px; margin: auto; padding-bottom: 100px; }
+/* Base styles — only applied in scroll mode */
+html.scroll-mode, html.scroll-mode body { background-color: #111 !important; color: #ccc !important; margin: 0; overflow-x: hidden; }
+html.scroll-mode #gdt { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 1200px; margin: auto; padding-bottom: 100px; }
 
 /* Scroll mode */
 .page-batch { width: 100%; display: flex; flex-direction: column; align-items: center; margin-bottom: 60px; }
@@ -84,6 +84,7 @@ html, body { background-color: #111 !important; color: #ccc !important; margin: 
 .sp-thumb-item:hover { border-color: rgba(255,255,255,0.4); }
 .sp-thumb-item.sp-thumb-active { border-color: var(--accent); }
 .sp-thumb-img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.sp-thumb-label { position: absolute; bottom: 0; right: 0; padding: 1px 5px; background: rgba(0,0,0,0.5); color: rgba(255,255,255,0.6); font-family: monospace; font-size: 11px; border-radius: 4px 0 0 0; pointer-events: none; }
 .sp-thumb-ph { width: 100%; height: 100%; background: #222; display: flex; align-items: center; justify-content: center; color: #555; font-family: monospace; font-size: 13px; -webkit-user-select: none; user-select: none; }
 .sp-thumb-counter { padding: 8px 0; text-align: center; color: #999; font-family: monospace; font-size: 13px; border-top: 1px solid rgba(255,255,255,0.08); -webkit-user-select: none; user-select: none; }
 
@@ -92,3 +93,10 @@ html, body { background-color: #111 !important; color: #ccc !important; margin: 
 .sp-placeholder-pulse { width: 60%; max-width: 500px; height: 60%; background: #181818; border-radius: 8px; animation: sp-pulse 1.5s ease-in-out infinite; }
 .sp-placeholder-text { position: absolute; color: #666; font-family: monospace; font-size: 16px; user-select: none; }
 @keyframes sp-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.6; } }
+
+/* Single page error state */
+.sp-error { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+.sp-error-text { color: #666; font-family: monospace; font-size: 16px; -webkit-user-select: none; user-select: none; }
+.sp-error-msg { color: #d44; font-family: sans-serif; font-size: 14px; }
+.sp-error-retry { padding: 8px 24px; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
+.sp-error-retry:hover { background: #555; }

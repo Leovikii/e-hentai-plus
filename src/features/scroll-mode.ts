@@ -19,8 +19,10 @@ function setErrorState(
   retryBtn.onclick = createRetryHandler(url, placeholder, pIndex, index);
 }
 
-export function processBatch(links: string[], pIndex: number): void {
-  const mainBox = document.querySelector('#gdt') as HTMLElement;
+export function processBatch(links: string[], pIndex: number, prepend = false): void {
+  const container = store.settings.scrollMode
+    ? document.querySelector('#gdt') as HTMLElement
+    : document.querySelector('#gdt-hidden') as HTMLElement;
   const batchDiv = document.createElement('div');
   batchDiv.className = 'page-batch';
   const fragment = document.createDocumentFragment();
@@ -57,7 +59,11 @@ export function processBatch(links: string[], pIndex: number): void {
   });
 
   batchDiv.appendChild(fragment);
-  mainBox.appendChild(batchDiv);
+  if (prepend && container.firstChild) {
+    container.insertBefore(batchDiv, container.firstChild);
+  } else {
+    container.appendChild(batchDiv);
+  }
 }
 
 export function setupAutoScroll(): void {

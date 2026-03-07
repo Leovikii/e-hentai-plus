@@ -10,7 +10,7 @@ export interface AutoPlayHandle {
 export function createAutoPlay(nextImageFn: () => void): AutoPlayHandle {
   function start(): void {
     if (store.autoPlayTimer) clearInterval(store.autoPlayTimer);
-    if (store.settings.autoPlay) {
+    if (store.autoPlay) {
       store.autoPlayTimer = setInterval(nextImageFn, store.settings.autoPlayInterval);
     }
   }
@@ -23,14 +23,15 @@ export function createAutoPlay(nextImageFn: () => void): AutoPlayHandle {
   }
 
   function reset(): void {
-    if (store.settings.autoPlay) {
+    if (store.autoPlay) {
       stop();
       start();
     }
   }
 
   function stopAtEnd(): void {
-    store.updateSetting('autoPlay', false);
+    store.autoPlay = false;
+    store.emit('settingsChanged');
     stop();
   }
 

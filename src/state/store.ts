@@ -2,7 +2,7 @@ import { GM_setValue } from '$';
 import type { UserSettings } from '../types';
 import { loadSettings } from './config';
 
-type StoreEvent = 'settingsChanged';
+type StoreEvent = 'settingsChanged' | 'readerModeChanged';
 type Listener = () => void;
 
 class Store {
@@ -12,7 +12,10 @@ class Store {
   // Page state
   currPage = 1;
   totalPage = 1;
+  perPage = 20;
+  imageOffset = 0;  // Global index of first loaded image (0-based)
   nextUrl: string | null = null;
+  prevUrl: string | null = null;
   isFetching = false;
   nextPagePrefetched = false;
 
@@ -20,6 +23,7 @@ class Store {
   currentImageIndex = 0;
   allImages: HTMLImageElement[] = [];
   autoPlayTimer: ReturnType<typeof setInterval> | null = null;
+  autoPlay = false;  // Session-only, not persisted
 
   constructor() {
     this._settings = loadSettings();
@@ -42,7 +46,7 @@ class Store {
     this.listeners.get(event)!.add(listener);
   }
 
-  private emit(event: StoreEvent): void {
+  emit(event: StoreEvent): void {
     this.listeners.get(event)?.forEach(fn => fn());
   }
 }
