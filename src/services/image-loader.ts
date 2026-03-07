@@ -41,6 +41,10 @@ export function loadImageWithRetry(url: string): Promise<string | null> {
   });
 }
 
+export function clearCachedImage(url: string): void {
+  imageCache.delete(url);
+}
+
 export function createRetryHandler(
   url: string,
   placeholder: HTMLElement,

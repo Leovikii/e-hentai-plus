@@ -93,3 +93,10 @@ html.scroll-mode #gdt { display: flex; flex-direction: column; align-items: cent
 .sp-placeholder-pulse { width: 60%; max-width: 500px; height: 60%; background: #181818; border-radius: 8px; animation: sp-pulse 1.5s ease-in-out infinite; }
 .sp-placeholder-text { position: absolute; color: #666; font-family: monospace; font-size: 16px; user-select: none; }
 @keyframes sp-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.6; } }
+
+/* Single page error state */
+.sp-error { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+.sp-error-text { color: #666; font-family: monospace; font-size: 16px; -webkit-user-select: none; user-select: none; }
+.sp-error-msg { color: #d44; font-family: sans-serif; font-size: 14px; }
+.sp-error-retry { padding: 8px 24px; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
+.sp-error-retry:hover { background: #555; }

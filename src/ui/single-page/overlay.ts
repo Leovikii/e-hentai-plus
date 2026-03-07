@@ -27,6 +27,13 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   currentImage.className = 'sp-current-image';
   imageContainer.appendChild(currentImage);
 
+  // Error handler for the overlay display image itself
+  currentImage.addEventListener('error', () => {
+    if (!overlay.classList.contains('active')) return;
+    if (!currentImage.src || currentImage.src === location.href) return;
+    showError();
+  });
+
   let loadPollTimer: ReturnType<typeof setInterval> | null = null;
   let loadTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
   let loadObserver: MutationObserver | null = null;
@@ -48,6 +55,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
 
   function showPlaceholder(): void {
     currentImage.style.display = 'none';
+    removeErrorUI();
     const existing = imageContainer.querySelector('.sp-placeholder');
     if (existing) existing.remove();
 
@@ -60,12 +68,60 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   function removePlaceholder(): void {
     const ph = imageContainer.querySelector('.sp-placeholder');
     if (ph) ph.remove();
+    removeErrorUI();
     currentImage.style.display = '';
+  }
+
+  function showError(): void {
+    clearLoadPoll();
+    currentImage.style.display = 'none';
+    const existing = imageContainer.querySelector('.sp-placeholder');
+    if (existing) existing.remove();
+    removeErrorUI();
+
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'sp-error';
+    errorDiv.innerHTML = `<div class="sp-error-text">${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}</div><div class="sp-error-msg">Load Failed</div><button class="sp-error-retry">Retry</button>`;
+    const retryBtn = errorDiv.querySelector('.sp-error-retry') as HTMLButtonElement;
+    retryBtn.onclick = () => retryCurrentImage();
+    imageContainer.appendChild(errorDiv);
+  }
+
+  function removeErrorUI(): void {
+    const err = imageContainer.querySelector('.sp-error');
+    if (err) err.remove();
+  }
+
+  function retryCurrentImage(): void {
+    const idx = store.currentImageIndex;
+    // Re-sync DOM images first
+    syncImages();
+    const img = store.allImages[idx];
+    if (img) {
+      // Force re-download by resetting src
+      const oldSrc = img.src;
+      img.removeAttribute('src');
+      img.src = oldSrc;
+    }
+    // Re-enter the normal loading flow
+    updateImage();
+  }
+
+  function syncImages(): void {
+    const freshImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+    if (freshImages.length !== store.allImages.length) {
+      store.allImages = freshImages;
+      scrollbar.update();
+    }
   }
 
   function updateImage(): void {
     clearLoadPoll();
+    removeErrorUI();
     const idx = store.currentImageIndex;
+
+    // Re-sync DOM to catch any replacements (error→retry→new img)
+    syncImages();
     const img = store.allImages[idx];
 
     if (!img) {
@@ -92,9 +148,11 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     if (wasAutoPlaying) autoPlay.stop();
 
     let imageErrored = false;
+    let lastKnownImg = store.allImages[idx];
 
     function onImageReady(): void {
       if (store.currentImageIndex !== idx) return;
+      // Re-check with fresh reference in case DOM was swapped
       const img = store.allImages[idx];
       if (img && isImageReady(img)) {
         clearLoadPoll();
@@ -107,15 +165,18 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
 
     function onImageError(): void {
       imageErrored = true;
-      // If auto-playing, try to skip immediately
       if (wasAutoPlaying && store.autoPlay) {
         tryAutoSkip();
+      } else {
+        // Non-autoplay: show error UI with retry button
+        if (store.currentImageIndex === idx) {
+          showError();
+        }
       }
     }
 
     function tryAutoSkip(): void {
       if (store.currentImageIndex !== idx) return;
-      // Check if next image is ready
       const nextIdx = idx + 1;
       if (nextIdx < store.allImages.length) {
         const nextImg = store.allImages[nextIdx];
@@ -130,7 +191,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
           return;
         }
       }
-      // Next image not ready either — just skip forward and let it poll again
+      // Next image not ready either — skip forward and let it poll again
       if (nextIdx < store.allImages.length || imageErrored) {
         clearLoadPoll();
         store.currentImageIndex = nextIdx < store.allImages.length ? nextIdx : idx;
@@ -142,10 +203,9 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     }
 
     // Watch for the target image becoming ready via load/error events
-    const img = store.allImages[idx];
-    if (img) {
-      img.addEventListener('load', onImageReady, { once: true });
-      img.addEventListener('error', onImageError, { once: true });
+    if (lastKnownImg) {
+      lastKnownImg.addEventListener('load', onImageReady, { once: true });
+      lastKnownImg.addEventListener('error', onImageError, { once: true });
     }
 
     // Watch for new images appearing in DOM (auto-scroll adding pages)
@@ -157,21 +217,34 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
         if (freshImages.length !== store.allImages.length) {
           store.allImages = freshImages;
           scrollbar.update();
-          // If the target image now exists, listen for its load
-          const newImg = store.allImages[idx];
-          if (newImg && !img) {
-            newImg.addEventListener('load', onImageReady, { once: true });
-            newImg.addEventListener('error', onImageError, { once: true });
-            if (isImageReady(newImg)) onImageReady();
-          }
+        }
+        // Check if the image at idx changed (e.g. error→retry created a new <img>)
+        const currentImg = store.allImages[idx];
+        if (currentImg && currentImg !== lastKnownImg) {
+          lastKnownImg = currentImg;
+          currentImg.addEventListener('load', onImageReady, { once: true });
+          currentImg.addEventListener('error', onImageError, { once: true });
+          if (isImageReady(currentImg)) onImageReady();
         }
       });
       loadObserver.observe(mainBox, { childList: true, subtree: true });
     }
 
-    // Fallback poll for cached images that don't fire load
+    // Fallback poll — also re-syncs DOM references
     loadPollTimer = setInterval(() => {
       if (store.currentImageIndex !== idx) { clearLoadPoll(); return; }
+      // Re-sync in case DOM changed without MutationObserver catching it
+      const freshImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+      if (freshImages.length !== store.allImages.length) {
+        store.allImages = freshImages;
+        scrollbar.update();
+      }
+      const currentImg = store.allImages[idx];
+      if (currentImg && currentImg !== lastKnownImg) {
+        lastKnownImg = currentImg;
+        currentImg.addEventListener('load', onImageReady, { once: true });
+        currentImg.addEventListener('error', onImageError, { once: true });
+      }
       onImageReady();
     }, 1000);
 
@@ -180,7 +253,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       loadTimeoutTimer = setTimeout(() => {
         if (store.currentImageIndex !== idx) return;
         const img = store.allImages[idx];
-        if (img && isImageReady(img)) return; // loaded just in time
+        if (img && isImageReady(img)) return;
         tryAutoSkip();
       }, CFG.imageLoadTimeout);
     }
@@ -258,6 +331,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
 
   function close(): void {
     clearLoadPoll();
+    removeErrorUI();
     autoPlay.stop();
     store.autoPlay = false;
     overlay.classList.remove('active');
