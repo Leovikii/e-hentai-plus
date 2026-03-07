@@ -109,7 +109,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
 
   function syncImages(): void {
     const freshImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-    if (freshImages.length !== store.allImages.length) {
+    if (freshImages.length !== store.allImages.length || freshImages.some((img, i) => img !== store.allImages[i])) {
       store.allImages = freshImages;
       scrollbar.update();
     }
@@ -230,15 +230,10 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       loadObserver.observe(mainBox, { childList: true, subtree: true });
     }
 
-    // Fallback poll — also re-syncs DOM references
+    // Fallback poll for cached images that don't fire load
     loadPollTimer = setInterval(() => {
       if (store.currentImageIndex !== idx) { clearLoadPoll(); return; }
-      // Re-sync in case DOM changed without MutationObserver catching it
-      const freshImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-      if (freshImages.length !== store.allImages.length) {
-        store.allImages = freshImages;
-        scrollbar.update();
-      }
+      // Check if the image reference changed (DOM swap not caught by observer)
       const currentImg = store.allImages[idx];
       if (currentImg && currentImg !== lastKnownImg) {
         lastKnownImg = currentImg;
