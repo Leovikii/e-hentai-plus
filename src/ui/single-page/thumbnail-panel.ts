@@ -13,6 +13,7 @@ const BUFFER = 3;
 export function createThumbnailPanel(
   onIndexChange: (index: number) => void,
   onScrollToBottom?: () => void,
+  onScrollToTop?: () => void,
 ): ThumbnailPanelHandle {
   const panel = document.createElement('div');
   panel.className = 'sp-thumb-panel';
@@ -81,13 +82,13 @@ export function createThumbnailPanel(
         thumbImg.src = img.src;
       }
       const label = el.querySelector('.sp-thumb-label') as HTMLElement;
-      if (label) label.textContent = String(index + 1);
+      if (label) label.textContent = String(store.imageOffset + index + 1);
     } else {
       if (!el.querySelector('.sp-thumb-ph')) {
         el.innerHTML = '';
         const ph = document.createElement('div');
         ph.className = 'sp-thumb-ph';
-        ph.textContent = String(index + 1);
+        ph.textContent = String(store.imageOffset + index + 1);
         el.appendChild(ph);
       }
     }
@@ -156,7 +157,7 @@ export function createThumbnailPanel(
       lastCenteredIndex = store.currentImageIndex;
     }
     renderVisibleItems();
-    counter.textContent = `${store.currentImageIndex + 1} / ${store.allImages.length}`;
+    counter.textContent = `${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}`;
   }
 
   // Wheel: scroll thumbnail list, isolate from reader navigation
@@ -168,6 +169,10 @@ export function createThumbnailPanel(
     // Trigger next page load when scrolled near bottom
     if (onScrollToBottom && scrollOffset >= maxOffset() - ITEM_HEIGHT) {
       onScrollToBottom();
+    }
+    // Trigger prev page load when scrolled near top
+    if (onScrollToTop && scrollOffset <= ITEM_HEIGHT) {
+      onScrollToTop();
     }
   }, { passive: false });
 

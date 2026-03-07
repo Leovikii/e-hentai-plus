@@ -4,7 +4,7 @@ import './ui/styles.css';
 import { store } from './state/store';
 import { qa } from './utils/dom';
 import { hideOriginalElements } from './utils/dom';
-import { calcTotal, getNextUrl } from './services/page-parser';
+import { calcTotal, getNextUrl, getPrevUrl, parseImageRange } from './services/page-parser';
 import { setupPrefetchListener } from './services/prefetch';
 import { processBatch, setupAutoScroll } from './features/scroll-mode';
 import { initSinglePageMode } from './features/single-page-mode';
@@ -33,6 +33,7 @@ import { registerMenuCommands } from './menu-commands';
   }
 
   store.nextUrl = getNextUrl(document);
+  store.prevUrl = getPrevUrl(document);
 
   if (store.settings.scrollMode) {
     // Scroll mode: replace original page with custom scroll view
@@ -44,6 +45,10 @@ import { registerMenuCommands } from './menu-commands';
     setupPrefetchListener();
   } else {
     // No scroll mode: keep original page, load images into hidden container for reader mode
+    const range = parseImageRange(document);
+    if (range) {
+      store.imageOffset = range.start - 1; // Convert 1-based to 0-based
+    }
     const hiddenBox = document.createElement('div');
     hiddenBox.id = 'gdt-hidden';
     hiddenBox.style.display = 'none';

@@ -1,6 +1,6 @@
 import { store } from '../../state/store';
 import { qa, isImageReady, fetchPageLinks } from '../../utils/dom';
-import { getNextUrl } from '../../services/page-parser';
+import { getNextUrl, getPrevUrl } from '../../services/page-parser';
 import { createScrollbar } from './scrollbar';
 import { setupNavigation } from './navigation';
 import { createAutoPlay } from './auto-play';
@@ -8,6 +8,7 @@ import type { SinglePageModeHandle } from '../../types';
 
 export interface OverlayDeps {
   onLoadNextPage: (links: string[], doc: Document) => void;
+  onLoadPrevPage: (links: string[], doc: Document) => void;
 }
 
 export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle {
@@ -46,7 +47,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
 
     const ph = document.createElement('div');
     ph.className = 'sp-placeholder';
-    ph.innerHTML = `<div class="sp-placeholder-pulse"></div><div class="sp-placeholder-text">${store.currentImageIndex + 1} / ${store.allImages.length}</div>`;
+    ph.innerHTML = `<div class="sp-placeholder-pulse"></div><div class="sp-placeholder-text">${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}</div>`;
     imageContainer.appendChild(ph);
   }
 
@@ -136,12 +137,13 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     store.currentImageIndex = index;
     updateImage();
     autoPlay.reset();
-  }, () => loadNextPage());
+  }, () => loadNextPage(), () => loadPrevPage());
 
   const nav = setupNavigation({
     overlay,
     updateImage,
     checkAndLoadNextPage: () => checkAndLoadNextPage(),
+    checkAndLoadPrevPage: () => loadPrevPage(),
     resetAutoPlay: () => autoPlay.reset(),
     stopAutoPlayAtEnd: () => autoPlay.stopAtEnd(),
     closeSinglePageMode: () => close(),
@@ -162,27 +164,32 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       return;
     }
 
-    const viewportCenter = window.scrollY + window.innerHeight / 2;
-    const searchRange = window.innerHeight * 2;
+    let startIndex = 0;
 
-    let closestIndex = 0;
-    let minDistance = Infinity;
+    if (store.settings.scrollMode) {
+      const viewportCenter = window.scrollY + window.innerHeight / 2;
+      const searchRange = window.innerHeight * 2;
+      let minDistance = Infinity;
 
-    store.allImages.forEach((img, index) => {
-      const rect = img.getBoundingClientRect();
-      const imgTop = rect.top + window.scrollY;
+      store.allImages.forEach((img, index) => {
+        const rect = img.getBoundingClientRect();
+        const imgTop = rect.top + window.scrollY;
 
-      if (Math.abs(imgTop - viewportCenter) < searchRange) {
-        const imgCenter = imgTop + rect.height / 2;
-        const distance = Math.abs(imgCenter - viewportCenter);
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestIndex = index;
+        if (Math.abs(imgTop - viewportCenter) < searchRange) {
+          const imgCenter = imgTop + rect.height / 2;
+          const distance = Math.abs(imgCenter - viewportCenter);
+          if (distance < minDistance) {
+            minDistance = distance;
+            startIndex = index;
+          }
         }
-      }
-    });
+      });
+    } else {
+      // Non-scroll mode: start at first image of current page (index 0 in allImages)
+      startIndex = 0;
+    }
 
-    store.currentImageIndex = closestIndex;
+    store.currentImageIndex = startIndex;
     overlay.classList.add('active');
     document.body.style.overflow = 'hidden';
     updateImage();
@@ -213,7 +220,8 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       }
     } else {
       // Navigate to the page containing the current image
-      const targetPage = Math.floor(store.currentImageIndex / store.perPage);
+      const globalIndex = store.imageOffset + store.currentImageIndex;
+      const targetPage = Math.floor(globalIndex / store.perPage);
       const url = new URL(window.location.href);
       const currentPage = parseInt(url.searchParams.get('p') || '0');
       if (targetPage !== currentPage) {
@@ -271,6 +279,55 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       store.nextPagePrefetched = false;
     }).catch((err) => {
       console.error('[Single Page] Load failed', err);
+      store.isFetching = false;
+    });
+  }
+
+  function loadPrevPage(): void {
+    if (!store.prevUrl || store.isFetching || store.imageOffset <= 0) return;
+
+    store.isFetching = true;
+
+    fetchPageLinks(store.prevUrl).then(({ doc, links }) => {
+      const prevCount = links.length;
+
+      deps.onLoadPrevPage(links, doc);
+
+      const mainBox = document.querySelector(store.settings.scrollMode ? '#gdt' : '#gdt-hidden');
+      if (mainBox) {
+        const expectedTotal = store.allImages.length + prevCount;
+        const obs = new MutationObserver(() => {
+          const newImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+          if (newImages.length !== store.allImages.length) {
+            // Adjust currentImageIndex to account for prepended images
+            const added = newImages.length - store.allImages.length;
+            store.currentImageIndex += added;
+            store.imageOffset -= added;
+            store.allImages = newImages;
+            scrollbar.update();
+          }
+          if (newImages.length >= expectedTotal) {
+            obs.disconnect();
+          }
+        });
+        obs.observe(mainBox, { childList: true, subtree: true });
+        setTimeout(() => {
+          obs.disconnect();
+          const finalImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+          if (finalImages.length !== store.allImages.length) {
+            const added = finalImages.length - store.allImages.length;
+            store.currentImageIndex += added;
+            store.imageOffset -= added;
+            store.allImages = finalImages;
+            scrollbar.update();
+          }
+        }, 30000);
+      }
+
+      store.prevUrl = getPrevUrl(doc);
+      store.isFetching = false;
+    }).catch((err) => {
+      console.error('[Single Page] Load prev failed', err);
       store.isFetching = false;
     });
   }

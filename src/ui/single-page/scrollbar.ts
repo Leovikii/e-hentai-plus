@@ -9,6 +9,7 @@ export interface ScrollbarHandle {
 export function createScrollbar(
   onIndexChange: (index: number) => void,
   onScrollToBottom?: () => void,
+  onScrollToTop?: () => void,
 ): ScrollbarHandle {
   const pageIndicator = document.createElement('div');
   pageIndicator.className = 'sp-scrollbar';
@@ -22,7 +23,7 @@ export function createScrollbar(
   pageIndicator.appendChild(scrollbarThumb);
   pageIndicator.appendChild(scrollbarLabel);
 
-  const thumbPanel = createThumbnailPanel(onIndexChange, onScrollToBottom);
+  const thumbPanel = createThumbnailPanel(onIndexChange, onScrollToBottom, onScrollToTop);
   pageIndicator.appendChild(thumbPanel.getElement());
   scrollbarLabel.style.display = 'none';
 
@@ -55,7 +56,7 @@ export function createScrollbar(
 
     scrollbarThumb.style.height = `${thumbHeight}px`;
     scrollbarThumb.style.top = `${thumbTop}px`;
-    scrollbarLabel.textContent = `${store.currentImageIndex + 1} / ${store.allImages.length}`;
+    scrollbarLabel.textContent = `${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}`;
     thumbPanel.update();
   }
 

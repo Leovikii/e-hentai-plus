@@ -13,7 +13,9 @@ class Store {
   currPage = 1;
   totalPage = 1;
   perPage = 20;
+  imageOffset = 0;  // Global index of first loaded image (0-based)
   nextUrl: string | null = null;
+  prevUrl: string | null = null;
   isFetching = false;
   nextPagePrefetched = false;
 
