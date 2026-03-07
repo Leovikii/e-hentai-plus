@@ -12,6 +12,7 @@ const BUFFER = 3;
 
 export function createThumbnailPanel(
   onIndexChange: (index: number) => void,
+  onScrollToBottom?: () => void,
 ): ThumbnailPanelHandle {
   const panel = document.createElement('div');
   panel.className = 'sp-thumb-panel';
@@ -72,10 +73,15 @@ export function createThumbnailPanel(
         thumbImg = document.createElement('img');
         thumbImg.className = 'sp-thumb-img';
         el.appendChild(thumbImg);
+        const label = document.createElement('span');
+        label.className = 'sp-thumb-label';
+        el.appendChild(label);
       }
       if (thumbImg.src !== img.src) {
         thumbImg.src = img.src;
       }
+      const label = el.querySelector('.sp-thumb-label') as HTMLElement;
+      if (label) label.textContent = String(index + 1);
     } else {
       if (!el.querySelector('.sp-thumb-ph')) {
         el.innerHTML = '';
@@ -159,6 +165,10 @@ export function createThumbnailPanel(
     e.stopPropagation();
     scrollOffset = clamp(scrollOffset + e.deltaY, 0, maxOffset());
     renderVisibleItems();
+    // Trigger next page load when scrolled near bottom
+    if (onScrollToBottom && scrollOffset >= maxOffset() - ITEM_HEIGHT) {
+      onScrollToBottom();
+    }
   }, { passive: false });
 
   // Click: event delegation

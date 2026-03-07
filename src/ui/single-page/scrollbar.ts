@@ -6,7 +6,10 @@ export interface ScrollbarHandle {
   getElement: () => HTMLElement;
 }
 
-export function createScrollbar(onIndexChange: (index: number) => void): ScrollbarHandle {
+export function createScrollbar(
+  onIndexChange: (index: number) => void,
+  onScrollToBottom?: () => void,
+): ScrollbarHandle {
   const pageIndicator = document.createElement('div');
   pageIndicator.className = 'sp-scrollbar';
 
@@ -19,7 +22,7 @@ export function createScrollbar(onIndexChange: (index: number) => void): Scrollb
   pageIndicator.appendChild(scrollbarThumb);
   pageIndicator.appendChild(scrollbarLabel);
 
-  const thumbPanel = createThumbnailPanel(onIndexChange);
+  const thumbPanel = createThumbnailPanel(onIndexChange, onScrollToBottom);
   pageIndicator.appendChild(thumbPanel.getElement());
   scrollbarLabel.style.display = 'none';
 

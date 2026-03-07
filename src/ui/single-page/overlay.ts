@@ -136,7 +136,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     store.currentImageIndex = index;
     updateImage();
     autoPlay.reset();
-  });
+  }, () => loadNextPage());
 
   const nav = setupNavigation({
     overlay,
@@ -233,48 +233,54 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     }
   });
 
+  function loadNextPage(): void {
+    if (!store.nextUrl || store.isFetching) return;
+
+    store.isFetching = true;
+
+    fetchPageLinks(store.nextUrl).then(({ doc, links }) => {
+
+      deps.onLoadNextPage(links, doc);
+
+      const mainBox = document.querySelector(store.settings.scrollMode ? '#gdt' : '#gdt-hidden');
+      if (mainBox) {
+        const expectedTotal = store.allImages.length + links.length;
+        const obs = new MutationObserver(() => {
+          const newImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+          if (newImages.length !== store.allImages.length) {
+            store.allImages = newImages;
+            scrollbar.update();
+          }
+          if (newImages.length >= expectedTotal) {
+            obs.disconnect();
+          }
+        });
+        obs.observe(mainBox, { childList: true, subtree: true });
+        setTimeout(() => {
+          obs.disconnect();
+          const finalImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+          if (finalImages.length !== store.allImages.length) {
+            store.allImages = finalImages;
+            scrollbar.update();
+          }
+        }, 30000);
+      }
+
+      store.nextUrl = getNextUrl(doc);
+      store.isFetching = false;
+      store.nextPagePrefetched = false;
+    }).catch((err) => {
+      console.error('[Single Page] Load failed', err);
+      store.isFetching = false;
+    });
+  }
+
   function checkAndLoadNextPage(): void {
     if (!store.nextUrl || store.isFetching) return;
 
     const remainingImages = store.allImages.length - store.currentImageIndex;
     if (remainingImages <= 10) {
-      store.isFetching = true;
-
-      fetchPageLinks(store.nextUrl).then(({ doc, links }) => {
-
-        deps.onLoadNextPage(links, doc);
-
-        const mainBox = document.querySelector(store.settings.scrollMode ? '#gdt' : '#gdt-hidden');
-        if (mainBox) {
-          const expectedTotal = store.allImages.length + links.length;
-          const obs = new MutationObserver(() => {
-            const newImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-            if (newImages.length !== store.allImages.length) {
-              store.allImages = newImages;
-              scrollbar.update();
-            }
-            if (newImages.length >= expectedTotal) {
-              obs.disconnect();
-            }
-          });
-          obs.observe(mainBox, { childList: true, subtree: true });
-          setTimeout(() => {
-            obs.disconnect();
-            const finalImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-            if (finalImages.length !== store.allImages.length) {
-              store.allImages = finalImages;
-              scrollbar.update();
-            }
-          }, 30000);
-        }
-
-        store.nextUrl = getNextUrl(doc);
-        store.isFetching = false;
-        store.nextPagePrefetched = false;
-      }).catch((err) => {
-        console.error('[Single Page] Load failed', err);
-        store.isFetching = false;
-      });
+      loadNextPage();
     }
   }
 
