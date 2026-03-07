@@ -20,6 +20,7 @@ import { registerMenuCommands } from './menu-commands';
   store.currPage = urlP ? parseInt(urlP) + 1 : 1;
 
   const initLinks = Array.from(qa('#gdt a', document)).map(a => (a as HTMLAnchorElement).href);
+  store.perPage = initLinks.length || 20;
 
   const galleryId = window.location.pathname;
   const savedTotal = localStorage.getItem(`eh_total_${galleryId}`);

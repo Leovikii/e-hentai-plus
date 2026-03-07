@@ -12,6 +12,7 @@ class Store {
   // Page state
   currPage = 1;
   totalPage = 1;
+  perPage = 20;
   nextUrl: string | null = null;
   isFetching = false;
   nextPagePrefetched = false;

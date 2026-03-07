@@ -211,6 +211,15 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
           }, 100);
         }
       }
+    } else {
+      // Navigate to the page containing the current image
+      const targetPage = Math.floor(store.currentImageIndex / store.perPage);
+      const url = new URL(window.location.href);
+      const currentPage = parseInt(url.searchParams.get('p') || '0');
+      if (targetPage !== currentPage) {
+        url.searchParams.set('p', String(targetPage));
+        window.location.href = url.toString();
+      }
     }
   }
 
