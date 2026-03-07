@@ -1,9 +1,9 @@
 /* Theme */
 :root { --accent: #F596AA; --accent-hover: #F7ABBE; }
 
-/* Base styles */
-html, body { background-color: #111 !important; color: #ccc !important; margin: 0; overflow-x: hidden; }
-#gdt { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 1200px; margin: auto; padding-bottom: 100px; }
+/* Base styles — only applied in scroll mode */
+html.scroll-mode, html.scroll-mode body { background-color: #111 !important; color: #ccc !important; margin: 0; overflow-x: hidden; }
+html.scroll-mode #gdt { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 1200px; margin: auto; padding-bottom: 100px; }
 
 /* Scroll mode */
 .page-batch { width: 100%; display: flex; flex-direction: column; align-items: center; margin-bottom: 60px; }

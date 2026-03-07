@@ -103,7 +103,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     }
 
     // Watch for new images appearing in DOM (auto-scroll adding pages)
-    const mainBox = document.querySelector('#gdt');
+    const mainBox = document.querySelector(store.settings.scrollMode ? '#gdt' : '#gdt-hidden');
     if (mainBox) {
       loadObserver = new MutationObserver(() => {
         if (store.currentImageIndex !== idx) { clearLoadPoll(); return; }
@@ -201,13 +201,15 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     document.body.style.overflow = '';
     store.emit('readerModeChanged');
 
-    const currentImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-    if (store.currentImageIndex >= 0 && store.currentImageIndex < currentImages.length) {
-      const targetImg = currentImages[store.currentImageIndex];
-      if (targetImg) {
-        setTimeout(() => {
-          targetImg.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
+    if (store.settings.scrollMode) {
+      const currentImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+      if (store.currentImageIndex >= 0 && store.currentImageIndex < currentImages.length) {
+        const targetImg = currentImages[store.currentImageIndex];
+        if (targetImg) {
+          setTimeout(() => {
+            targetImg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 100);
+        }
       }
     }
   }
@@ -223,7 +225,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   });
 
   function checkAndLoadNextPage(): void {
-    if (!store.settings.autoScroll || !store.nextUrl || store.isFetching) return;
+    if (!store.nextUrl || store.isFetching) return;
 
     const remainingImages = store.allImages.length - store.currentImageIndex;
     if (remainingImages <= 10) {
@@ -233,7 +235,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
 
         deps.onLoadNextPage(links, doc);
 
-        const mainBox = document.querySelector('#gdt');
+        const mainBox = document.querySelector(store.settings.scrollMode ? '#gdt' : '#gdt-hidden');
         if (mainBox) {
           const expectedTotal = store.allImages.length + links.length;
           const obs = new MutationObserver(() => {

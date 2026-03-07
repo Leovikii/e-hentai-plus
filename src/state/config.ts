@@ -10,6 +10,7 @@ export const CFG: AppConfig = {
 
 export function loadSettings(): UserSettings {
   return {
+    scrollMode: GM_getValue('scrollMode', true),
     autoScroll: GM_getValue('autoScroll', true),
     showControl: GM_getValue('showControl', true),
     autoEnterSinglePage: GM_getValue('autoEnterSinglePage', false),

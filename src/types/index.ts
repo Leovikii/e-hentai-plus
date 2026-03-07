@@ -1,4 +1,5 @@
 export interface UserSettings {
+  scrollMode: boolean;
   autoScroll: boolean;
   showControl: boolean;
   autoEnterSinglePage: boolean;

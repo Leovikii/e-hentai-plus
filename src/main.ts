@@ -12,8 +12,6 @@ import { createFloatControl } from './ui/float-control';
 import { registerMenuCommands } from './menu-commands';
 
 (function main() {
-  hideOriginalElements();
-
   const mainBox = document.querySelector('#gdt') as HTMLElement;
   if (!mainBox) return;
 
@@ -35,9 +33,22 @@ import { registerMenuCommands } from './menu-commands';
 
   store.nextUrl = getNextUrl(document);
 
-  // Clear original content and load first batch
-  mainBox.innerHTML = '';
-  processBatch(initLinks, store.currPage);
+  if (store.settings.scrollMode) {
+    // Scroll mode: replace original page with custom scroll view
+    document.documentElement.classList.add('scroll-mode');
+    hideOriginalElements();
+    mainBox.innerHTML = '';
+    processBatch(initLinks, store.currPage);
+    setupAutoScroll();
+    setupPrefetchListener();
+  } else {
+    // No scroll mode: keep original page, load images into hidden container for reader mode
+    const hiddenBox = document.createElement('div');
+    hiddenBox.id = 'gdt-hidden';
+    hiddenBox.style.display = 'none';
+    document.body.appendChild(hiddenBox);
+    processBatch(initLinks, store.currPage);
+  }
 
   // Initialize single page mode with lazy wrapper for circular dependency
   let spmHandle: ReturnType<typeof initSinglePageMode>;
@@ -51,12 +62,6 @@ import { registerMenuCommands } from './menu-commands';
   });
 
   spmHandle = initSinglePageMode();
-
-  // Auto scroll (IntersectionObserver)
-  setupAutoScroll();
-
-  // Prefetch
-  setupPrefetchListener();
 
   // Menu commands
   registerMenuCommands();

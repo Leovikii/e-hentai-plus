@@ -20,7 +20,9 @@ function setErrorState(
 }
 
 export function processBatch(links: string[], pIndex: number): void {
-  const mainBox = document.querySelector('#gdt') as HTMLElement;
+  const container = store.settings.scrollMode
+    ? document.querySelector('#gdt') as HTMLElement
+    : document.querySelector('#gdt-hidden') as HTMLElement;
   const batchDiv = document.createElement('div');
   batchDiv.className = 'page-batch';
   const fragment = document.createDocumentFragment();
@@ -57,7 +59,7 @@ export function processBatch(links: string[], pIndex: number): void {
   });
 
   batchDiv.appendChild(fragment);
-  mainBox.appendChild(batchDiv);
+  container.appendChild(batchDiv);
 }
 
 export function setupAutoScroll(): void {
