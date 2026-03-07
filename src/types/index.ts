@@ -13,6 +13,7 @@ export interface AppConfig {
   retryDelay: number;
   maxConcurrent: number;
   requestSpacing: number;
+  imageLoadTimeout: number;
 }
 
 export interface SinglePageModeHandle {

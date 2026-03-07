@@ -4,9 +4,9 @@ export function calcTotal(doc: Document, fallbackLinkCount: number): number {
   const gpc = q('.gpc', doc);
   if (gpc) {
     const txt = gpc.textContent ?? '';
-    const m = txt.match(/of\s+(\d+)\s+images/);
+    const m = txt.match(/of\s+([\d,]+)\s+images/);
     if (m && m[1]) {
-      const totalImgs = parseInt(m[1]);
+      const totalImgs = parseInt(m[1].replace(/,/g, ''));
       const perPage = fallbackLinkCount || 20;
       return Math.ceil(totalImgs / perPage);
     }

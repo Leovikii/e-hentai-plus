@@ -18,19 +18,19 @@ class RequestQueue {
   }
 
   private run(): void {
-    if (this.running >= CFG.maxConcurrent || this.queue.length === 0) return;
+    while (this.running < CFG.maxConcurrent && this.queue.length > 0) {
+      const task = this.queue.shift()!;
+      this.running++;
 
-    const task = this.queue.shift()!;
-    this.running++;
+      const next = () => {
+        this.running--;
+        setTimeout(() => this.run(), CFG.requestSpacing);
+      };
 
-    const next = () => {
-      this.running--;
-      setTimeout(() => this.run(), CFG.requestSpacing);
-    };
-
-    task.execute()
-      .then(value => { task.resolve(value); next(); })
-      .catch(reason => { task.reject(reason); next(); });
+      task.execute()
+        .then(value => { task.resolve(value); next(); })
+        .catch(reason => { task.reject(reason); next(); });
+    }
   }
 }
 

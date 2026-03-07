@@ -8,6 +8,7 @@ export const CFG: AppConfig = {
   retryDelay: 1000,
   maxConcurrent: 3,
   requestSpacing: 100,
+  imageLoadTimeout: 10000,
 };
 
 export function loadSettings(): UserSettings {

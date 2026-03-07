@@ -1,4 +1,5 @@
 import { store } from '../../state/store';
+import { CFG } from '../../state/config';
 import { qa, isImageReady, fetchPageLinks } from '../../utils/dom';
 import { getNextUrl, getPrevUrl } from '../../services/page-parser';
 import { createScrollbar } from './scrollbar';
@@ -27,12 +28,17 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   imageContainer.appendChild(currentImage);
 
   let loadPollTimer: ReturnType<typeof setInterval> | null = null;
+  let loadTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
   let loadObserver: MutationObserver | null = null;
 
   function clearLoadPoll(): void {
     if (loadPollTimer) {
       clearInterval(loadPollTimer);
       loadPollTimer = null;
+    }
+    if (loadTimeoutTimer) {
+      clearTimeout(loadTimeoutTimer);
+      loadTimeoutTimer = null;
     }
     if (loadObserver) {
       loadObserver.disconnect();
@@ -85,6 +91,8 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     const wasAutoPlaying = !!store.autoPlayTimer;
     if (wasAutoPlaying) autoPlay.stop();
 
+    let imageErrored = false;
+
     function onImageReady(): void {
       if (store.currentImageIndex !== idx) return;
       const img = store.allImages[idx];
@@ -97,10 +105,47 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       }
     }
 
-    // Watch for the target image becoming ready via load event
+    function onImageError(): void {
+      imageErrored = true;
+      // If auto-playing, try to skip immediately
+      if (wasAutoPlaying && store.autoPlay) {
+        tryAutoSkip();
+      }
+    }
+
+    function tryAutoSkip(): void {
+      if (store.currentImageIndex !== idx) return;
+      // Check if next image is ready
+      const nextIdx = idx + 1;
+      if (nextIdx < store.allImages.length) {
+        const nextImg = store.allImages[nextIdx];
+        if (nextImg && isImageReady(nextImg)) {
+          clearLoadPoll();
+          store.currentImageIndex = nextIdx;
+          removePlaceholder();
+          currentImage.src = nextImg.src;
+          scrollbar.update();
+          checkAndLoadNextPage();
+          autoPlay.start();
+          return;
+        }
+      }
+      // Next image not ready either — just skip forward and let it poll again
+      if (nextIdx < store.allImages.length || imageErrored) {
+        clearLoadPoll();
+        store.currentImageIndex = nextIdx < store.allImages.length ? nextIdx : idx;
+        updateImage();
+        if (nextIdx < store.allImages.length) {
+          checkAndLoadNextPage();
+        }
+      }
+    }
+
+    // Watch for the target image becoming ready via load/error events
     const img = store.allImages[idx];
     if (img) {
       img.addEventListener('load', onImageReady, { once: true });
+      img.addEventListener('error', onImageError, { once: true });
     }
 
     // Watch for new images appearing in DOM (auto-scroll adding pages)
@@ -116,6 +161,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
           const newImg = store.allImages[idx];
           if (newImg && !img) {
             newImg.addEventListener('load', onImageReady, { once: true });
+            newImg.addEventListener('error', onImageError, { once: true });
             if (isImageReady(newImg)) onImageReady();
           }
         }
@@ -123,11 +169,21 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       loadObserver.observe(mainBox, { childList: true, subtree: true });
     }
 
-    // Fallback poll at lower frequency for edge cases (e.g. cached images that don't fire load)
+    // Fallback poll for cached images that don't fire load
     loadPollTimer = setInterval(() => {
       if (store.currentImageIndex !== idx) { clearLoadPoll(); return; }
       onImageReady();
     }, 1000);
+
+    // Timeout: if image isn't ready after N seconds and auto-playing, skip forward
+    if (wasAutoPlaying && store.autoPlay) {
+      loadTimeoutTimer = setTimeout(() => {
+        if (store.currentImageIndex !== idx) return;
+        const img = store.allImages[idx];
+        if (img && isImageReady(img)) return; // loaded just in time
+        tryAutoSkip();
+      }, CFG.imageLoadTimeout);
+    }
   }
 
   // Wire up sub-modules (forward declarations resolved via closures)
