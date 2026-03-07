@@ -92,7 +92,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
         removePlaceholder();
         currentImage.src = img.src;
         scrollbar.update();
-        if (wasAutoPlaying && store.settings.autoPlay) autoPlay.start();
+        if (wasAutoPlaying && store.autoPlay) autoPlay.start();
       }
     }
 
@@ -186,8 +186,9 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     overlay.classList.add('active');
     document.body.style.overflow = 'hidden';
     updateImage();
+    store.emit('readerModeChanged');
 
-    if (store.settings.autoPlay) {
+    if (store.autoPlay) {
       autoPlay.start();
     }
   }
@@ -195,8 +196,10 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   function close(): void {
     clearLoadPoll();
     autoPlay.stop();
+    store.autoPlay = false;
     overlay.classList.remove('active');
     document.body.style.overflow = '';
+    store.emit('readerModeChanged');
 
     const currentImages = Array.from(qa('.r-img')) as HTMLImageElement[];
     if (store.currentImageIndex >= 0 && store.currentImageIndex < currentImages.length) {
@@ -212,7 +215,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   // Listen for autoPlay setting changes from float-control button
   store.on('settingsChanged', () => {
     if (!overlay.classList.contains('active')) return;
-    if (store.settings.autoPlay) {
+    if (store.autoPlay) {
       autoPlay.start();
     } else {
       autoPlay.stop();

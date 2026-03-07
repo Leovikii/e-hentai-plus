@@ -2,7 +2,7 @@ import { GM_setValue } from '$';
 import type { UserSettings } from '../types';
 import { loadSettings } from './config';
 
-type StoreEvent = 'settingsChanged';
+type StoreEvent = 'settingsChanged' | 'readerModeChanged';
 type Listener = () => void;
 
 class Store {
@@ -20,6 +20,7 @@ class Store {
   currentImageIndex = 0;
   allImages: HTMLImageElement[] = [];
   autoPlayTimer: ReturnType<typeof setInterval> | null = null;
+  autoPlay = false;  // Session-only, not persisted
 
   constructor() {
     this._settings = loadSettings();
@@ -42,7 +43,7 @@ class Store {
     this.listeners.get(event)!.add(listener);
   }
 
-  private emit(event: StoreEvent): void {
+  emit(event: StoreEvent): void {
     this.listeners.get(event)?.forEach(fn => fn());
   }
 }

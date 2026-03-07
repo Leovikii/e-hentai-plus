@@ -9,13 +9,14 @@ export function createFloatControl(spmHandle: SinglePageModeHandle): void {
 
   // Auto-play button (left, hidden until reader mode opens)
   const autoPlayBtn = document.createElement('div');
-  autoPlayBtn.className = `side-btn auto-play-btn hidden${store.settings.autoPlay ? ' active' : ''}`;
-  autoPlayBtn.innerHTML = store.settings.autoPlay ? svgPause : svgPlay;
+  autoPlayBtn.className = `side-btn auto-play-btn hidden${store.autoPlay ? ' active' : ''}`;
+  autoPlayBtn.innerHTML = store.autoPlay ? svgPause : svgPlay;
   autoPlayBtn.title = 'Auto Play';
   autoPlayBtn.onclick = (e) => {
     e.stopPropagation();
-    const newValue = !store.settings.autoPlay;
-    store.updateSetting('autoPlay', newValue);
+    const newValue = !store.autoPlay;
+    store.autoPlay = newValue;
+    store.emit('settingsChanged');
     autoPlayBtn.innerHTML = newValue ? svgPause : svgPlay;
     autoPlayBtn.classList.toggle('active', newValue);
   };
@@ -29,15 +30,21 @@ export function createFloatControl(spmHandle: SinglePageModeHandle): void {
     if (e.target !== circleControl && !circleControl.querySelector('svg')?.contains(e.target as Node)) return;
     if (spmHandle.isActive()) {
       spmHandle.close();
-      autoPlayBtn.classList.add('hidden');
     } else {
       spmHandle.open();
-      autoPlayBtn.classList.remove('hidden');
-      // Sync button state with current autoPlay setting
-      autoPlayBtn.innerHTML = store.settings.autoPlay ? svgPause : svgPlay;
-      autoPlayBtn.classList.toggle('active', store.settings.autoPlay);
     }
   };
+
+  // Sync play button visibility with reader mode state (works for both manual and auto-enter)
+  store.on('readerModeChanged', () => {
+    if (spmHandle.isActive()) {
+      autoPlayBtn.classList.remove('hidden');
+      autoPlayBtn.innerHTML = store.autoPlay ? svgPause : svgPlay;
+      autoPlayBtn.classList.toggle('active', store.autoPlay);
+    } else {
+      autoPlayBtn.classList.add('hidden');
+    }
+  });
 
   // Settings button (right)
   const settings = createSettingsPanel();

@@ -13,7 +13,6 @@ export function loadSettings(): UserSettings {
     autoScroll: GM_getValue('autoScroll', true),
     showControl: GM_getValue('showControl', true),
     autoEnterSinglePage: GM_getValue('autoEnterSinglePage', false),
-    autoPlay: GM_getValue('autoPlay', false),
     autoPlayInterval: GM_getValue('autoPlayInterval', 3000),
   };
 }

@@ -40,7 +40,7 @@ export function setupNavigation(deps: NavigationDeps): {
       deps.checkAndLoadNextPage();
     } else {
       deps.checkAndLoadNextPage();
-      if (store.settings.autoPlay) {
+      if (store.autoPlay) {
         deps.stopAutoPlayAtEnd();
       }
     }
@@ -50,7 +50,7 @@ export function setupNavigation(deps: NavigationDeps): {
     if (store.currentImageIndex > 0) {
       store.currentImageIndex--;
       deps.updateImage();
-      if (store.settings.autoPlay) {
+      if (store.autoPlay) {
         deps.resetAutoPlay();
       }
     }

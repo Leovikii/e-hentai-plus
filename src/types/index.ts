@@ -2,7 +2,6 @@ export interface UserSettings {
   autoScroll: boolean;
   showControl: boolean;
   autoEnterSinglePage: boolean;
-  autoPlay: boolean;
   autoPlayInterval: number;
 }
 
