@@ -1,68 +1,64 @@
 # E-Hentai Plus
 
-Enhanced continuous reading mode for E-Hentai / ExHentai with floating controls and ultra-fast loading.
+Enhanced reading experience for E-Hentai / ExHentai with infinite scroll, full-screen reader, and smart image loading.
+
+[中文](README.zh-CN.md)
 
 ## Features
 
-- **Scroll Mode** — Infinite scroll with automatic next-page loading and image prefetching
-- **Reader Mode** — Full-screen single-image viewer with keyboard, mouse wheel, and scrollbar navigation
-- **Auto Play** — Automatic image slideshow with configurable interval
-- **Skeleton Placeholder** — Pulse animation placeholder for images still loading
-- **Floating Controls** — Compact floating button group: reader mode toggle, auto-play, and settings
-- **Settings Panel** — Toggle auto scroll, show/hide controls, auto-enter reader mode, and adjust play interval
-- **Menu Commands** — Tampermonkey menu integration for quick setting toggles
-- **Image Prefetch** — Background prefetching of next page images for seamless browsing
+- **Scroll Mode Toggle** — Enable for infinite scroll with auto next-page loading; disable to keep the original gallery layout untouched
+- **Reader Mode** — Full-screen single-image viewer with keyboard, mouse wheel, scrollbar, and thumbnail panel navigation
+- **Auto Play** — Slideshow with configurable interval, auto-skips failed images
+- **Bidirectional Page Loading** — Load next/previous pages seamlessly in both scroll and reader mode
+- **Smart Image Loading** — Concurrent request queue, exponential backoff retry, rate limit detection, and URL caching
+- **Error Recovery** — Retry button on failed images in both scroll mode and reader mode
 
 ## Installation
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) browser extension
 2. Install the userscript from [Sleazy Fork](https://sleazyfork.org/zh-CN/scripts/565718-e-hentai-plus) or [Github release](https://github.com/Leovikii/e-hentai-plus/releases/latest/download/e-hentai-plus.user.js)
+
 ## Build from Source
 
 ```bash
-# Install dependencies
 npm install
-
-# Development mode (with hot reload)
-npm run dev
-
-# Production build
-npm run build
+npm run dev    # Development (hot reload)
+npm run build  # Production
 ```
 
-The built userscript will be at `dist/e-hentai-plus.user.js`.
+Output: `dist/e-hentai-plus.user.js`
 
 ## Tech Stack
 
-- **TypeScript** — Strict mode enabled
-- **Vite** + **vite-plugin-monkey** — Build toolchain for Tampermonkey userscripts
-- **UnoCSS** — Atomic CSS engine
+- **TypeScript** + **Vite** + **vite-plugin-monkey**
+- **UnoCSS**
 
 ## Project Structure
 
 ```
 src/
 ├── main.ts                    # Entry point
-├── menu-commands.ts           # GM_registerMenuCommand registration
-├── types/
-│   └── index.ts               # Shared type definitions
+├── menu-commands.ts           # Tampermonkey menu commands
+├── types/index.ts             # Type definitions
 ├── state/
-│   ├── config.ts              # Constants and settings loader
-│   └── store.ts               # Centralized state management
+│   ├── config.ts              # Constants and settings
+│   └── store.ts               # Centralized state
 ├── utils/
-│   ├── dom.ts                 # DOM utility functions
-│   └── icons.ts               # SVG icon constants
+│   ├── dom.ts                 # DOM utilities
+│   └── icons.ts               # SVG icons
 ├── services/
-│   ├── page-parser.ts         # Page parsing (total pages, next URL)
-│   ├── image-loader.ts        # Image loading with retry
+│   ├── page-parser.ts         # Page URL and range parsing
+│   ├── image-loader.ts        # Image loading with retry and cache
+│   ├── request-queue.ts       # Concurrent request queue
 │   └── prefetch.ts            # Next page prefetching
 ├── ui/
-│   ├── styles.css             # Component styles
-│   ├── float-control.ts       # Floating control buttons
-│   ├── settings-panel.ts      # Settings panel UI
+│   ├── styles.css             # Styles
+│   ├── float-control.ts       # Floating controls
+│   ├── settings-panel.ts      # Settings panel
 │   └── single-page/
 │       ├── overlay.ts         # Reader mode overlay
-│       ├── scrollbar.ts       # Custom scrollbar
+│       ├── scrollbar.ts       # Scrollbar with thumbnail panel
+│       ├── thumbnail-panel.ts # Virtual-scrolling thumbnails
 │       ├── navigation.ts      # Keyboard/wheel/click navigation
 │       └── auto-play.ts       # Auto-play logic
 └── features/
