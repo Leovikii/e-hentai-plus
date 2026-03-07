@@ -11,6 +11,8 @@ export interface AppConfig {
   prefetchDistance: number;
   maxRetries: number;
   retryDelay: number;
+  maxConcurrent: number;
+  requestSpacing: number;
 }
 
 export interface SinglePageModeHandle {

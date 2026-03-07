@@ -6,6 +6,8 @@ export const CFG: AppConfig = {
   prefetchDistance: 5000,
   maxRetries: 3,
   retryDelay: 1000,
+  maxConcurrent: 3,
+  requestSpacing: 100,
 };
 
 export function loadSettings(): UserSettings {
