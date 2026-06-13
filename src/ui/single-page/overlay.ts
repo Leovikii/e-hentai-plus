@@ -5,6 +5,7 @@ import { getNextUrl, getPrevUrl } from '../../services/page-parser';
 import { createScrollbar } from './scrollbar';
 import { setupNavigation } from './navigation';
 import { createAutoPlay } from './auto-play';
+import { createStatusHUD } from '../components/status-hud';
 import type { SinglePageModeHandle } from '../../types';
 
 export interface OverlayDeps {
@@ -53,43 +54,33 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     }
   }
 
-  function showPlaceholder(): void {
-    currentImage.style.display = 'none';
-    removeErrorUI();
-    const existing = imageContainer.querySelector('.sp-placeholder');
-    if (existing) existing.remove();
+  const statusHUD = createStatusHUD();
 
-    const ph = document.createElement('div');
-    ph.className = 'sp-placeholder';
-    ph.innerHTML = `<div class="sp-placeholder-pulse"></div><div class="sp-placeholder-text">${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}</div>`;
-    imageContainer.appendChild(ph);
+  function showPlaceholder(statusText: string = 'Loading...'): void {
+    statusHUD.show({
+      status: 'loading',
+      text: statusText,
+      pageText: `${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}`
+    });
   }
 
   function removePlaceholder(): void {
-    const ph = imageContainer.querySelector('.sp-placeholder');
-    if (ph) ph.remove();
-    removeErrorUI();
-    currentImage.style.display = '';
+    statusHUD.hide();
   }
 
   function showError(): void {
     clearLoadPoll();
     currentImage.style.display = 'none';
-    const existing = imageContainer.querySelector('.sp-placeholder');
-    if (existing) existing.remove();
-    removeErrorUI();
-
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'sp-error';
-    errorDiv.innerHTML = `<div class="sp-error-text">${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}</div><div class="sp-error-msg">Load Failed</div><button class="sp-error-retry">Retry</button>`;
-    const retryBtn = errorDiv.querySelector('.sp-error-retry') as HTMLButtonElement;
-    retryBtn.onclick = () => retryCurrentImage();
-    imageContainer.appendChild(errorDiv);
+    statusHUD.show({
+      status: 'error',
+      text: 'Load Failed. Click to Retry',
+      pageText: `${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}`,
+      onClick: () => retryCurrentImage()
+    });
   }
 
   function removeErrorUI(): void {
-    const err = imageContainer.querySelector('.sp-error');
-    if (err) err.remove();
+    statusHUD.hide();
   }
 
   function retryCurrentImage(): void {
@@ -98,17 +89,39 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     syncImages();
     const img = store.allImages[idx];
     if (img) {
-      // Force re-download by resetting src
-      const oldSrc = img.src;
+      const viewerUrl = img.dataset.viewerUrl;
+      const nlToken = img.dataset.nl;
+      
+      if (viewerUrl) {
+        showPlaceholder(nlToken ? 'Requesting New Node...' : 'Reloading...');
+        
+        import('../../services/image-loader').then(({ loadImageWithRetry, clearCachedImage }) => {
+          clearCachedImage(viewerUrl);
+          const fetchUrl = nlToken ? `${viewerUrl}${viewerUrl.includes('?') ? '&' : '?'}nl=${nlToken}` : undefined;
+          
+          loadImageWithRetry(viewerUrl, fetchUrl).then(res => {
+            if (res) {
+              (img as HTMLImageElement).src = res.src;
+              if (res.nl) img.dataset.nl = res.nl;
+              updateImage();
+            } else {
+              showError();
+            }
+          }).catch(() => showError());
+        });
+        return;
+      }
+
+      // Fallback for native images
+      const oldSrc = (img as HTMLImageElement).src;
       img.removeAttribute('src');
-      img.src = oldSrc;
+      (img as HTMLImageElement).src = oldSrc;
     }
-    // Re-enter the normal loading flow
     updateImage();
   }
 
   function syncImages(): void {
-    const freshImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+    const freshImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
     if (freshImages.length !== store.allImages.length || freshImages.some((img, i) => img !== store.allImages[i])) {
       store.allImages = freshImages;
       scrollbar.update();
@@ -120,55 +133,70 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     removeErrorUI();
     const idx = store.currentImageIndex;
 
-    // Re-sync DOM to catch any replacements (error→retry→new img)
     syncImages();
     const img = store.allImages[idx];
 
     if (!img) {
-      showPlaceholder();
+      showPlaceholder('Waiting for network...');
       scrollbar.update();
       startLoadPoll(idx);
       return;
     }
 
-    if (isImageReady(img)) {
-      removePlaceholder();
-      currentImage.src = img.src;
-      scrollbar.update();
-      return;
+    const imgSrc = (img as HTMLImageElement).src;
+
+    if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
+      currentImage.removeAttribute('src');
+      setTimeout(() => {
+        currentImage.src = imgSrc;
+        currentImage.dataset.assignedSrc = imgSrc;
+      }, 0);
+    } else if (!imgSrc) {
+      currentImage.removeAttribute('src');
+      delete currentImage.dataset.assignedSrc;
+    }
+    
+    currentImage.style.display = 'block';
+
+    if (imgSrc) {
+      if (!isImageReady(img as HTMLImageElement)) {
+        showPlaceholder('Downloading...');
+      } else {
+        removePlaceholder();
+      }
+    } else {
+      showPlaceholder('Waiting for network...');
     }
 
-    showPlaceholder();
     scrollbar.update();
-    startLoadPoll(idx);
+
+    if (!isImageReady(img as HTMLImageElement)) {
+      startLoadPoll(idx);
+    }
   }
 
   function startLoadPoll(idx: number): void {
-    const wasAutoPlaying = !!store.autoPlayTimer;
-    if (wasAutoPlaying) autoPlay.stop();
+    if (store.autoPlay) autoPlay.stop();
 
     let imageErrored = false;
     let lastKnownImg = store.allImages[idx];
 
     function onImageReady(): void {
       if (store.currentImageIndex !== idx) return;
-      // Re-check with fresh reference in case DOM was swapped
       const img = store.allImages[idx];
-      if (img && isImageReady(img)) {
+      if (img && isImageReady(img as HTMLImageElement)) {
         clearLoadPoll();
         removePlaceholder();
-        currentImage.src = img.src;
         scrollbar.update();
-        if (wasAutoPlaying && store.autoPlay) autoPlay.start();
+        if (store.autoPlay) autoPlay.start();
       }
     }
 
     function onImageError(): void {
       imageErrored = true;
-      if (wasAutoPlaying && store.autoPlay) {
+      if (store.autoPlay) {
         tryAutoSkip();
       } else {
-        // Non-autoplay: show error UI with retry button
         if (store.currentImageIndex === idx) {
           showError();
         }
@@ -180,18 +208,15 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       const nextIdx = idx + 1;
       if (nextIdx < store.allImages.length) {
         const nextImg = store.allImages[nextIdx];
-        if (nextImg && isImageReady(nextImg)) {
+        if (nextImg && isImageReady(nextImg as HTMLImageElement)) {
           clearLoadPoll();
           store.currentImageIndex = nextIdx;
-          removePlaceholder();
-          currentImage.src = nextImg.src;
-          scrollbar.update();
+          updateImage();
           checkAndLoadNextPage();
-          autoPlay.start();
+          if (store.autoPlay) autoPlay.start();
           return;
         }
       }
-      // Next image not ready either — skip forward and let it poll again
       if (nextIdx < store.allImages.length || imageErrored) {
         clearLoadPoll();
         store.currentImageIndex = nextIdx < store.allImages.length ? nextIdx : idx;
@@ -202,53 +227,81 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       }
     }
 
-    // Watch for the target image becoming ready via load/error events
-    if (lastKnownImg) {
+    if (lastKnownImg && lastKnownImg.tagName === 'IMG') {
       lastKnownImg.addEventListener('load', onImageReady, { once: true });
       lastKnownImg.addEventListener('error', onImageError, { once: true });
     }
 
-    // Watch for new images appearing in DOM (auto-scroll adding pages)
     const mainBox = document.querySelector(store.settings.scrollMode ? '#gdt' : '#gdt-hidden');
     if (mainBox) {
       loadObserver = new MutationObserver(() => {
         if (store.currentImageIndex !== idx) { clearLoadPoll(); return; }
-        const freshImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-        if (freshImages.length !== store.allImages.length) {
+        const freshImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
+        if (freshImages.length !== store.allImages.length || freshImages.some((img, i) => img !== store.allImages[i])) {
           store.allImages = freshImages;
           scrollbar.update();
         }
-        // Check if the image at idx changed (e.g. error→retry created a new <img>)
         const currentImg = store.allImages[idx];
-        if (currentImg && currentImg !== lastKnownImg) {
-          lastKnownImg = currentImg;
-          currentImg.addEventListener('load', onImageReady, { once: true });
-          currentImg.addEventListener('error', onImageError, { once: true });
-          if (isImageReady(currentImg)) onImageReady();
+        if (currentImg) {
+           const imgSrc = (currentImg as HTMLImageElement).src;
+           if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
+             currentImage.removeAttribute('src');
+             setTimeout(() => {
+               currentImage.src = imgSrc;
+               currentImage.dataset.assignedSrc = imgSrc;
+               if (!isImageReady(currentImg as HTMLImageElement)) {
+                 showPlaceholder('Downloading...');
+               } else {
+                 removePlaceholder();
+               }
+             }, 0);
+          }
+          if (currentImg !== lastKnownImg) {
+            lastKnownImg = currentImg;
+            if (currentImg.tagName === 'IMG') {
+              currentImg.addEventListener('load', onImageReady, { once: true });
+              currentImg.addEventListener('error', onImageError, { once: true });
+              if (isImageReady(currentImg as HTMLImageElement)) onImageReady();
+            }
+          }
         }
       });
       loadObserver.observe(mainBox, { childList: true, subtree: true });
     }
 
-    // Fallback poll for cached images that don't fire load
     loadPollTimer = setInterval(() => {
       if (store.currentImageIndex !== idx) { clearLoadPoll(); return; }
-      // Check if the image reference changed (DOM swap not caught by observer)
       const currentImg = store.allImages[idx];
-      if (currentImg && currentImg !== lastKnownImg) {
-        lastKnownImg = currentImg;
-        currentImg.addEventListener('load', onImageReady, { once: true });
-        currentImg.addEventListener('error', onImageError, { once: true });
+      if (currentImg) {
+        const imgSrc = (currentImg as HTMLImageElement).src;
+        if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
+           currentImage.removeAttribute('src');
+           setTimeout(() => {
+             currentImage.src = imgSrc;
+             currentImage.dataset.assignedSrc = imgSrc;
+             if (!isImageReady(currentImg as HTMLImageElement)) {
+               showPlaceholder('Downloading...');
+             } else {
+               removePlaceholder();
+             }
+           }, 0);
+        }
+        if (currentImg !== lastKnownImg) {
+          lastKnownImg = currentImg;
+          if (currentImg.tagName === 'IMG') {
+            currentImg.addEventListener('load', onImageReady, { once: true });
+            currentImg.addEventListener('error', onImageError, { once: true });
+          }
+        }
       }
       onImageReady();
-    }, 1000);
+    }, 500);
 
-    // Timeout: if image isn't ready after N seconds and auto-playing, skip forward
-    if (wasAutoPlaying && store.autoPlay) {
+    if (store.autoPlay) {
       loadTimeoutTimer = setTimeout(() => {
         if (store.currentImageIndex !== idx) return;
         const img = store.allImages[idx];
-        if (img && isImageReady(img)) return;
+        if (img && isImageReady(img as HTMLImageElement)) return;
         tryAutoSkip();
       }, CFG.imageLoadTimeout);
     }
@@ -276,13 +329,14 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   // Assemble DOM
   overlay.appendChild(closeBtn);
   overlay.appendChild(scrollbar.getElement());
+  overlay.appendChild(statusHUD.getElement());
   overlay.appendChild(imageContainer);
   document.body.appendChild(overlay);
 
   closeBtn.onclick = () => close();
 
   function open(): void {
-    store.allImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+    store.allImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
     if (store.allImages.length === 0) {
       alert('Please wait for images to load');
       return;
@@ -334,7 +388,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     store.emit('readerModeChanged');
 
     if (store.settings.scrollMode) {
-      const currentImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+      const currentImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
       if (store.currentImageIndex >= 0 && store.currentImageIndex < currentImages.length) {
         const targetImg = currentImages[store.currentImageIndex];
         if (targetImg) {
@@ -360,7 +414,10 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   store.on('settingsChanged', () => {
     if (!overlay.classList.contains('active')) return;
     if (store.autoPlay) {
-      autoPlay.start();
+      const img = store.allImages[store.currentImageIndex];
+      if (img && isImageReady(img as HTMLImageElement)) {
+        autoPlay.start();
+      }
     } else {
       autoPlay.stop();
     }
@@ -375,29 +432,8 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
 
       deps.onLoadNextPage(links, doc);
 
-      const mainBox = document.querySelector(store.settings.scrollMode ? '#gdt' : '#gdt-hidden');
-      if (mainBox) {
-        const expectedTotal = store.allImages.length + links.length;
-        const obs = new MutationObserver(() => {
-          const newImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-          if (newImages.length !== store.allImages.length) {
-            store.allImages = newImages;
-            scrollbar.update();
-          }
-          if (newImages.length >= expectedTotal) {
-            obs.disconnect();
-          }
-        });
-        obs.observe(mainBox, { childList: true, subtree: true });
-        setTimeout(() => {
-          obs.disconnect();
-          const finalImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-          if (finalImages.length !== store.allImages.length) {
-            store.allImages = finalImages;
-            scrollbar.update();
-          }
-        }, 30000);
-      }
+      store.allImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
+      scrollbar.update();
 
       store.nextUrl = getNextUrl(doc);
       store.isFetching = false;
@@ -418,36 +454,10 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
 
       deps.onLoadPrevPage(links, doc);
 
-      const mainBox = document.querySelector(store.settings.scrollMode ? '#gdt' : '#gdt-hidden');
-      if (mainBox) {
-        const expectedTotal = store.allImages.length + prevCount;
-        const obs = new MutationObserver(() => {
-          const newImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-          if (newImages.length !== store.allImages.length) {
-            // Adjust currentImageIndex to account for prepended images
-            const added = newImages.length - store.allImages.length;
-            store.currentImageIndex += added;
-            store.imageOffset -= added;
-            store.allImages = newImages;
-            scrollbar.update();
-          }
-          if (newImages.length >= expectedTotal) {
-            obs.disconnect();
-          }
-        });
-        obs.observe(mainBox, { childList: true, subtree: true });
-        setTimeout(() => {
-          obs.disconnect();
-          const finalImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-          if (finalImages.length !== store.allImages.length) {
-            const added = finalImages.length - store.allImages.length;
-            store.currentImageIndex += added;
-            store.imageOffset -= added;
-            store.allImages = finalImages;
-            scrollbar.update();
-          }
-        }, 30000);
-      }
+      store.currentImageIndex += prevCount;
+      store.imageOffset -= prevCount;
+      store.allImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
+      scrollbar.update();
 
       store.prevUrl = getPrevUrl(doc);
       store.isFetching = false;

@@ -1,5 +1,4 @@
 import { store } from '../../state/store';
-import { isImageReady } from '../../utils/dom';
 
 export interface ThumbnailPanelHandle {
   update: () => void;
@@ -67,7 +66,7 @@ export function createThumbnailPanel(
     el.classList.toggle('sp-thumb-active', index === store.currentImageIndex);
 
     const img = store.allImages[index];
-    if (img && isImageReady(img)) {
+    if (img && (img as HTMLImageElement).src) {
       let thumbImg = el.querySelector('img') as HTMLImageElement | null;
       if (!thumbImg) {
         el.innerHTML = '';
@@ -78,8 +77,8 @@ export function createThumbnailPanel(
         label.className = 'sp-thumb-label';
         el.appendChild(label);
       }
-      if (thumbImg.src !== img.src) {
-        thumbImg.src = img.src;
+      if (thumbImg.src !== (img as HTMLImageElement).src) {
+        thumbImg.src = (img as HTMLImageElement).src;
       }
       const label = el.querySelector('.sp-thumb-label') as HTMLElement;
       if (label) label.textContent = String(store.imageOffset + index + 1);

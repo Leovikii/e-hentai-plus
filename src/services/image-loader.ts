@@ -1,14 +1,21 @@
 import { q } from '../utils/dom';
 import { CFG } from '../state/config';
 import { requestQueue } from './request-queue';
+import { store } from '../state/store';
+
+export interface ImageLoadResult {
+  src: string;
+  nl: string | null;
+}
 
 const parser = new DOMParser();
-const imageCache = new Map<string, string>();
+const imageCache = new Map<string, ImageLoadResult>();
 
-async function fetchImageSrc(url: string, retries = 0): Promise<string | null> {
+async function fetchImageSrc(url: string, retries = 0): Promise<ImageLoadResult | null> {
   try {
     const response = await fetch(url);
     if (response.status === 429 || response.status === 503) {
+      requestQueue.pauseGlobally(5000);
       throw { rateLimited: true };
     }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -17,7 +24,12 @@ async function fetchImageSrc(url: string, retries = 0): Promise<string | null> {
     const imgEl = q('#img', doc) as HTMLImageElement | null;
     const imgSrc = imgEl?.src;
     if (!imgSrc) throw new Error('Image not found');
-    return imgSrc;
+    
+    const onerror = imgEl.getAttribute('onerror') || '';
+    const m = onerror.match(/nl\(['"]([^'"]+)['"]\)/);
+    const nlToken = m ? m[1] : null;
+
+    return { src: imgSrc, nl: nlToken };
   } catch (err) {
     if (retries < CFG.maxRetries) {
       const isRateLimited = err && typeof err === 'object' && 'rateLimited' in err;
@@ -31,37 +43,24 @@ async function fetchImageSrc(url: string, retries = 0): Promise<string | null> {
   }
 }
 
-export function loadImageWithRetry(url: string): Promise<string | null> {
-  const cached = imageCache.get(url);
-  if (cached) return Promise.resolve(cached);
+export function loadImageWithRetry(originalUrl: string, fetchUrl?: string, globalIndex?: number): Promise<ImageLoadResult | null> {
+  const urlToFetch = fetchUrl || originalUrl;
 
-  return requestQueue.enqueue(() => fetchImageSrc(url)).then(src => {
-    if (src) imageCache.set(url, src);
-    return src;
+  if (!fetchUrl) {
+    const cached = imageCache.get(originalUrl);
+    if (cached) return Promise.resolve(cached);
+  }
+
+  const priorityFn = globalIndex !== undefined 
+    ? () => -Math.abs(store.currentImageIndex - globalIndex) 
+    : undefined;
+
+  return requestQueue.enqueue(() => fetchImageSrc(urlToFetch), priorityFn).then(res => {
+    if (res) imageCache.set(originalUrl, res);
+    return res;
   });
 }
 
 export function clearCachedImage(url: string): void {
   imageCache.delete(url);
-}
-
-export function createRetryHandler(
-  url: string,
-  placeholder: HTMLElement,
-  pIndex: number,
-  index: number,
-): () => void {
-  return () => {
-    placeholder.className = 'r-ph loading';
-    placeholder.textContent = `P${pIndex}-${index + 1} Reloading...`;
-    imageCache.delete(url);
-    loadImageWithRetry(url).then(newSrc => {
-      if (newSrc) {
-        const newImg = document.createElement('img');
-        newImg.src = newSrc;
-        newImg.className = 'r-img';
-        placeholder.parentNode?.replaceChild(newImg, placeholder);
-      }
-    });
-  };
 }

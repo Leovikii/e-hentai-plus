@@ -61,21 +61,27 @@ export function setupNavigation(deps: NavigationDeps): {
   }
 
   // Wheel scroll
-  let wheelTimeout: ReturnType<typeof setTimeout>;
-  let wheelDelta = 0;
+  let accumulatedDelta = 0;
   let isScrolling = false;
+  let lastFlipTime = 0;
+  let wheelTimeout: ReturnType<typeof setTimeout>;
 
   const processWheelScroll = (): void => {
     if (!isScrolling) return;
-    const threshold = 100;
-    if (Math.abs(wheelDelta) >= threshold) {
-      if (wheelDelta > 0) {
+
+    const threshold = 70;
+    const now = Date.now();
+    
+    if (Math.abs(accumulatedDelta) >= threshold && (now - lastFlipTime) >= 40) {
+      if (accumulatedDelta > 0) {
         nextImage();
       } else {
         previousImage();
       }
-      wheelDelta = wheelDelta > 0 ? wheelDelta - threshold : wheelDelta + threshold;
+      accumulatedDelta = accumulatedDelta > 0 ? accumulatedDelta - threshold : accumulatedDelta + threshold;
+      lastFlipTime = now;
     }
+
     if (isScrolling) {
       requestAnimationFrame(processWheelScroll);
     }
@@ -83,15 +89,25 @@ export function setupNavigation(deps: NavigationDeps): {
 
   deps.overlay.addEventListener('wheel', (e) => {
     e.preventDefault();
-    wheelDelta += e.deltaY;
+    
+    let normalizedDelta = e.deltaY;
+    if (e.deltaMode === 1) {
+      normalizedDelta *= 33; 
+    } else if (e.deltaMode === 2) {
+      normalizedDelta *= 800;
+    }
+    
+    accumulatedDelta += normalizedDelta;
+    
     if (!isScrolling) {
       isScrolling = true;
       processWheelScroll();
     }
+    
     clearTimeout(wheelTimeout);
     wheelTimeout = setTimeout(() => {
       isScrolling = false;
-      wheelDelta = 0;
+      accumulatedDelta = 0;
     }, 150);
   }, { passive: false });
 

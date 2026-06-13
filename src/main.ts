@@ -10,6 +10,7 @@ import { processBatch, setupAutoScroll } from './features/scroll-mode';
 import { initSinglePageMode } from './features/single-page-mode';
 import { createFloatControl } from './ui/float-control';
 import { registerMenuCommands } from './menu-commands';
+import { initMemoryManager } from './features/memory-manager';
 
 (function main() {
   const mainBox = document.querySelector('#gdt') as HTMLElement;
@@ -76,4 +77,6 @@ import { registerMenuCommands } from './menu-commands';
   if (store.settings.autoEnterSinglePage) {
     setTimeout(() => spmHandle.open(), 1000);
   }
+
+  initMemoryManager();
 })();
