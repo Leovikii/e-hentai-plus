@@ -19,10 +19,10 @@ export function prefetchNextPage(): void {
 
     fetchPageLinks(store.nextUrl).then(({ links }) => {
       links.forEach(url => {
-        loadImageWithRetry(url).then(imgSrc => {
-          if (imgSrc) {
+        loadImageWithRetry(url).then(res => {
+          if (res) {
             const preloadImg = new Image();
-            preloadImg.src = imgSrc;
+            preloadImg.src = res.src;
           }
         }).catch(() => null);
       });

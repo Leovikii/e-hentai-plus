@@ -21,7 +21,7 @@ class Store {
 
   // Single page state
   currentImageIndex = 0;
-  allImages: HTMLImageElement[] = [];
+  allImages: HTMLElement[] = [];
   autoPlayTimer: ReturnType<typeof setInterval> | null = null;
   autoPlay = false;  // Session-only, not persisted
 

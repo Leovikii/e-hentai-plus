@@ -102,7 +102,9 @@ export function processBatch(links: string[], pIndex: number, prepend = false): 
     `;
     fragment.appendChild(placeholder);
 
-    loadImageWithRetry(url)
+    const globalIndex = (pIndex - 1) * store.perPage + index;
+
+    loadImageWithRetry(url, undefined, globalIndex)
       .then(res => {
         if (res) {
           const img = document.createElement('img');

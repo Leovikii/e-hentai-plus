@@ -1,6 +1,7 @@
 import { q } from '../utils/dom';
 import { CFG } from '../state/config';
 import { requestQueue } from './request-queue';
+import { store } from '../state/store';
 
 export interface ImageLoadResult {
   src: string;
@@ -14,6 +15,7 @@ async function fetchImageSrc(url: string, retries = 0): Promise<ImageLoadResult 
   try {
     const response = await fetch(url);
     if (response.status === 429 || response.status === 503) {
+      requestQueue.pauseGlobally(5000);
       throw { rateLimited: true };
     }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -41,7 +43,7 @@ async function fetchImageSrc(url: string, retries = 0): Promise<ImageLoadResult 
   }
 }
 
-export function loadImageWithRetry(originalUrl: string, fetchUrl?: string): Promise<ImageLoadResult | null> {
+export function loadImageWithRetry(originalUrl: string, fetchUrl?: string, globalIndex?: number): Promise<ImageLoadResult | null> {
   const urlToFetch = fetchUrl || originalUrl;
 
   if (!fetchUrl) {
@@ -49,7 +51,11 @@ export function loadImageWithRetry(originalUrl: string, fetchUrl?: string): Prom
     if (cached) return Promise.resolve(cached);
   }
 
-  return requestQueue.enqueue(() => fetchImageSrc(urlToFetch)).then(res => {
+  const priorityFn = globalIndex !== undefined 
+    ? () => -Math.abs(store.currentImageIndex - globalIndex) 
+    : undefined;
+
+  return requestQueue.enqueue(() => fetchImageSrc(urlToFetch), priorityFn).then(res => {
     if (res) imageCache.set(originalUrl, res);
     return res;
   });

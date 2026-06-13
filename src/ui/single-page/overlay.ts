@@ -5,6 +5,7 @@ import { getNextUrl, getPrevUrl } from '../../services/page-parser';
 import { createScrollbar } from './scrollbar';
 import { setupNavigation } from './navigation';
 import { createAutoPlay } from './auto-play';
+import { createStatusHUD } from '../components/status-hud';
 import type { SinglePageModeHandle } from '../../types';
 
 export interface OverlayDeps {
@@ -53,66 +54,33 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     }
   }
 
-  function showPlaceholder(statusText: string = 'Loading...'): void {
-    removeErrorUI();
-    const existing = imageContainer.querySelector('.sp-placeholder');
-    if (existing) existing.remove();
+  const statusHUD = createStatusHUD();
 
-    const ph = document.createElement('div');
-    ph.className = 'sp-placeholder';
-    ph.style.position = 'absolute';
-    ph.style.top = '50%';
-    ph.style.left = '50%';
-    ph.style.transform = 'translate(-50%, -50%)';
-    ph.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
-        <div style="display: flex; align-items: center; gap: 10px; background: rgba(20, 20, 20, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); padding: 10px 20px; border-radius: 30px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); margin-bottom: 16px;">
-          <style>@keyframes sp-spin { 100% { transform: rotate(360deg); } }</style>
-          <svg style="color: #F596AA; width: 20px; height: 20px; animation: sp-spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-            <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
-          </svg>
-          <div style="font-size: 15px; color: #f3f4f6; font-weight: 500; letter-spacing: 0.5px;">${statusText}</div>
-        </div>
-        <div style="font-size: 14px; color: rgba(255, 255, 255, 0.5); font-family: monospace; letter-spacing: 1px;">${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}</div>
-      </div>
-    `;
-    imageContainer.appendChild(ph);
+  function showPlaceholder(statusText: string = 'Loading...'): void {
+    statusHUD.show({
+      status: 'loading',
+      text: statusText,
+      pageText: `${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}`
+    });
   }
 
   function removePlaceholder(): void {
-    const ph = imageContainer.querySelector('.sp-placeholder');
-    if (ph) ph.remove();
-    removeErrorUI();
+    statusHUD.hide();
   }
 
   function showError(): void {
     clearLoadPoll();
     currentImage.style.display = 'none';
-    const existing = imageContainer.querySelector('.sp-placeholder');
-    if (existing) existing.remove();
-    removeErrorUI();
-
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'sp-error';
-    errorDiv.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; transform: translateY(-20px); cursor: pointer;" class="retry-btn-wrapper">
-        <div style="display: flex; align-items: center; gap: 10px; background: rgba(200, 40, 40, 0.8); border: 1px solid rgba(255, 255, 255, 0.2); padding: 10px 20px; border-radius: 30px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); margin-bottom: 16px; transition: all 0.2s;">
-          <svg style="color: #fff; width: 20px; height: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-            <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"></path>
-          </svg>
-          <div style="font-size: 15px; color: #fff; font-weight: 500; letter-spacing: 0.5px;">Load Failed. Click to Retry</div>
-        </div>
-        <div style="font-size: 14px; color: rgba(255, 255, 255, 0.5); font-family: monospace; letter-spacing: 1px;">${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}</div>
-      </div>
-    `;
-    const wrapper = errorDiv.querySelector('.retry-btn-wrapper') as HTMLElement;
-    wrapper.onclick = () => retryCurrentImage();
-    imageContainer.appendChild(errorDiv);
+    statusHUD.show({
+      status: 'error',
+      text: 'Load Failed. Click to Retry',
+      pageText: `${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}`,
+      onClick: () => retryCurrentImage()
+    });
   }
 
   function removeErrorUI(): void {
-    const err = imageContainer.querySelector('.sp-error');
-    if (err) err.remove();
+    statusHUD.hide();
   }
 
   function retryCurrentImage(): void {
@@ -133,7 +101,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
           
           loadImageWithRetry(viewerUrl, fetchUrl).then(res => {
             if (res) {
-              img.src = res.src;
+              (img as HTMLImageElement).src = res.src;
               if (res.nl) img.dataset.nl = res.nl;
               updateImage();
             } else {
@@ -145,15 +113,15 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       }
 
       // Fallback for native images
-      const oldSrc = img.src;
+      const oldSrc = (img as HTMLImageElement).src;
       img.removeAttribute('src');
-      img.src = oldSrc;
+      (img as HTMLImageElement).src = oldSrc;
     }
     updateImage();
   }
 
   function syncImages(): void {
-    const freshImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+    const freshImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
     if (freshImages.length !== store.allImages.length || freshImages.some((img, i) => img !== store.allImages[i])) {
       store.allImages = freshImages;
       scrollbar.update();
@@ -175,35 +143,40 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       return;
     }
 
-    if (img.src && currentImage.dataset.assignedSrc !== img.src) {
+    const imgSrc = (img as HTMLImageElement).src;
+
+    if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
       currentImage.removeAttribute('src');
       setTimeout(() => {
-        currentImage.src = img.src;
-        currentImage.dataset.assignedSrc = img.src;
+        currentImage.src = imgSrc;
+        currentImage.dataset.assignedSrc = imgSrc;
       }, 0);
-    } else if (!img.src) {
+    } else if (!imgSrc) {
       currentImage.removeAttribute('src');
       delete currentImage.dataset.assignedSrc;
     }
     
     currentImage.style.display = 'block';
 
-    if (img.src) {
-      removePlaceholder();
+    if (imgSrc) {
+      if (!isImageReady(img as HTMLImageElement)) {
+        showPlaceholder('Downloading...');
+      } else {
+        removePlaceholder();
+      }
     } else {
       showPlaceholder('Waiting for network...');
     }
 
     scrollbar.update();
 
-    if (!isImageReady(img)) {
+    if (!isImageReady(img as HTMLImageElement)) {
       startLoadPoll(idx);
     }
   }
 
   function startLoadPoll(idx: number): void {
-    const wasAutoPlaying = !!store.autoPlayTimer;
-    if (wasAutoPlaying) autoPlay.stop();
+    if (store.autoPlay) autoPlay.stop();
 
     let imageErrored = false;
     let lastKnownImg = store.allImages[idx];
@@ -211,17 +184,17 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     function onImageReady(): void {
       if (store.currentImageIndex !== idx) return;
       const img = store.allImages[idx];
-      if (img && isImageReady(img)) {
+      if (img && isImageReady(img as HTMLImageElement)) {
         clearLoadPoll();
         removePlaceholder();
         scrollbar.update();
-        if (wasAutoPlaying && store.autoPlay) autoPlay.start();
+        if (store.autoPlay) autoPlay.start();
       }
     }
 
     function onImageError(): void {
       imageErrored = true;
-      if (wasAutoPlaying && store.autoPlay) {
+      if (store.autoPlay) {
         tryAutoSkip();
       } else {
         if (store.currentImageIndex === idx) {
@@ -235,12 +208,12 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       const nextIdx = idx + 1;
       if (nextIdx < store.allImages.length) {
         const nextImg = store.allImages[nextIdx];
-        if (nextImg && isImageReady(nextImg)) {
+        if (nextImg && isImageReady(nextImg as HTMLImageElement)) {
           clearLoadPoll();
           store.currentImageIndex = nextIdx;
           updateImage();
           checkAndLoadNextPage();
-          if (wasAutoPlaying && store.autoPlay) autoPlay.start();
+          if (store.autoPlay) autoPlay.start();
           return;
         }
       }
@@ -254,7 +227,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       }
     }
 
-    if (lastKnownImg) {
+    if (lastKnownImg && lastKnownImg.tagName === 'IMG') {
       lastKnownImg.addEventListener('load', onImageReady, { once: true });
       lastKnownImg.addEventListener('error', onImageError, { once: true });
     }
@@ -263,26 +236,33 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     if (mainBox) {
       loadObserver = new MutationObserver(() => {
         if (store.currentImageIndex !== idx) { clearLoadPoll(); return; }
-        const freshImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-        if (freshImages.length !== store.allImages.length) {
+        const freshImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
+        if (freshImages.length !== store.allImages.length || freshImages.some((img, i) => img !== store.allImages[i])) {
           store.allImages = freshImages;
           scrollbar.update();
         }
         const currentImg = store.allImages[idx];
         if (currentImg) {
-          if (currentImg.src && currentImage.dataset.assignedSrc !== currentImg.src) {
+           const imgSrc = (currentImg as HTMLImageElement).src;
+           if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
              currentImage.removeAttribute('src');
              setTimeout(() => {
-               currentImage.src = currentImg.src;
-               currentImage.dataset.assignedSrc = currentImg.src;
-               removePlaceholder();
+               currentImage.src = imgSrc;
+               currentImage.dataset.assignedSrc = imgSrc;
+               if (!isImageReady(currentImg as HTMLImageElement)) {
+                 showPlaceholder('Downloading...');
+               } else {
+                 removePlaceholder();
+               }
              }, 0);
           }
           if (currentImg !== lastKnownImg) {
             lastKnownImg = currentImg;
-            currentImg.addEventListener('load', onImageReady, { once: true });
-            currentImg.addEventListener('error', onImageError, { once: true });
-            if (isImageReady(currentImg)) onImageReady();
+            if (currentImg.tagName === 'IMG') {
+              currentImg.addEventListener('load', onImageReady, { once: true });
+              currentImg.addEventListener('error', onImageError, { once: true });
+              if (isImageReady(currentImg as HTMLImageElement)) onImageReady();
+            }
           }
         }
       });
@@ -293,28 +273,35 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       if (store.currentImageIndex !== idx) { clearLoadPoll(); return; }
       const currentImg = store.allImages[idx];
       if (currentImg) {
-        if (currentImg.src && currentImage.dataset.assignedSrc !== currentImg.src) {
+        const imgSrc = (currentImg as HTMLImageElement).src;
+        if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
            currentImage.removeAttribute('src');
            setTimeout(() => {
-             currentImage.src = currentImg.src;
-             currentImage.dataset.assignedSrc = currentImg.src;
-             removePlaceholder();
+             currentImage.src = imgSrc;
+             currentImage.dataset.assignedSrc = imgSrc;
+             if (!isImageReady(currentImg as HTMLImageElement)) {
+               showPlaceholder('Downloading...');
+             } else {
+               removePlaceholder();
+             }
            }, 0);
         }
         if (currentImg !== lastKnownImg) {
           lastKnownImg = currentImg;
-          currentImg.addEventListener('load', onImageReady, { once: true });
-          currentImg.addEventListener('error', onImageError, { once: true });
+          if (currentImg.tagName === 'IMG') {
+            currentImg.addEventListener('load', onImageReady, { once: true });
+            currentImg.addEventListener('error', onImageError, { once: true });
+          }
         }
       }
       onImageReady();
     }, 500);
 
-    if (wasAutoPlaying && store.autoPlay) {
+    if (store.autoPlay) {
       loadTimeoutTimer = setTimeout(() => {
         if (store.currentImageIndex !== idx) return;
         const img = store.allImages[idx];
-        if (img && isImageReady(img)) return;
+        if (img && isImageReady(img as HTMLImageElement)) return;
         tryAutoSkip();
       }, CFG.imageLoadTimeout);
     }
@@ -342,13 +329,14 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   // Assemble DOM
   overlay.appendChild(closeBtn);
   overlay.appendChild(scrollbar.getElement());
+  overlay.appendChild(statusHUD.getElement());
   overlay.appendChild(imageContainer);
   document.body.appendChild(overlay);
 
   closeBtn.onclick = () => close();
 
   function open(): void {
-    store.allImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+    store.allImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
     if (store.allImages.length === 0) {
       alert('Please wait for images to load');
       return;
@@ -400,7 +388,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     store.emit('readerModeChanged');
 
     if (store.settings.scrollMode) {
-      const currentImages = Array.from(qa('.r-img')) as HTMLImageElement[];
+      const currentImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
       if (store.currentImageIndex >= 0 && store.currentImageIndex < currentImages.length) {
         const targetImg = currentImages[store.currentImageIndex];
         if (targetImg) {
@@ -426,7 +414,10 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   store.on('settingsChanged', () => {
     if (!overlay.classList.contains('active')) return;
     if (store.autoPlay) {
-      autoPlay.start();
+      const img = store.allImages[store.currentImageIndex];
+      if (img && isImageReady(img as HTMLImageElement)) {
+        autoPlay.start();
+      }
     } else {
       autoPlay.stop();
     }
@@ -441,29 +432,8 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
 
       deps.onLoadNextPage(links, doc);
 
-      const mainBox = document.querySelector(store.settings.scrollMode ? '#gdt' : '#gdt-hidden');
-      if (mainBox) {
-        const expectedTotal = store.allImages.length + links.length;
-        const obs = new MutationObserver(() => {
-          const newImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-          if (newImages.length !== store.allImages.length) {
-            store.allImages = newImages;
-            scrollbar.update();
-          }
-          if (newImages.length >= expectedTotal) {
-            obs.disconnect();
-          }
-        });
-        obs.observe(mainBox, { childList: true, subtree: true });
-        setTimeout(() => {
-          obs.disconnect();
-          const finalImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-          if (finalImages.length !== store.allImages.length) {
-            store.allImages = finalImages;
-            scrollbar.update();
-          }
-        }, 30000);
-      }
+      store.allImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
+      scrollbar.update();
 
       store.nextUrl = getNextUrl(doc);
       store.isFetching = false;
@@ -484,36 +454,10 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
 
       deps.onLoadPrevPage(links, doc);
 
-      const mainBox = document.querySelector(store.settings.scrollMode ? '#gdt' : '#gdt-hidden');
-      if (mainBox) {
-        const expectedTotal = store.allImages.length + prevCount;
-        const obs = new MutationObserver(() => {
-          const newImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-          if (newImages.length !== store.allImages.length) {
-            // Adjust currentImageIndex to account for prepended images
-            const added = newImages.length - store.allImages.length;
-            store.currentImageIndex += added;
-            store.imageOffset -= added;
-            store.allImages = newImages;
-            scrollbar.update();
-          }
-          if (newImages.length >= expectedTotal) {
-            obs.disconnect();
-          }
-        });
-        obs.observe(mainBox, { childList: true, subtree: true });
-        setTimeout(() => {
-          obs.disconnect();
-          const finalImages = Array.from(qa('.r-img')) as HTMLImageElement[];
-          if (finalImages.length !== store.allImages.length) {
-            const added = finalImages.length - store.allImages.length;
-            store.currentImageIndex += added;
-            store.imageOffset -= added;
-            store.allImages = finalImages;
-            scrollbar.update();
-          }
-        }, 30000);
-      }
+      store.currentImageIndex += prevCount;
+      store.imageOffset -= prevCount;
+      store.allImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
+      scrollbar.update();
 
       store.prevUrl = getPrevUrl(doc);
       store.isFetching = false;
