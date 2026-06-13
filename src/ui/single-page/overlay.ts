@@ -54,15 +54,18 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   }
 
   function showPlaceholder(statusText: string = 'Loading...'): void {
-    currentImage.style.display = 'none';
     removeErrorUI();
     const existing = imageContainer.querySelector('.sp-placeholder');
     if (existing) existing.remove();
 
     const ph = document.createElement('div');
     ph.className = 'sp-placeholder';
+    ph.style.position = 'absolute';
+    ph.style.top = '50%';
+    ph.style.left = '50%';
+    ph.style.transform = 'translate(-50%, -50%)';
     ph.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; transform: translateY(-20px);">
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
         <div style="display: flex; align-items: center; gap: 10px; background: rgba(20, 20, 20, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); padding: 10px 20px; border-radius: 30px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); margin-bottom: 16px;">
           <style>@keyframes sp-spin { 100% { transform: rotate(360deg); } }</style>
           <svg style="color: #F596AA; width: 20px; height: 20px; animation: sp-spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -80,7 +83,6 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     const ph = imageContainer.querySelector('.sp-placeholder');
     if (ph) ph.remove();
     removeErrorUI();
-    currentImage.style.display = '';
   }
 
   function showError(): void {
@@ -92,9 +94,19 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
 
     const errorDiv = document.createElement('div');
     errorDiv.className = 'sp-error';
-    errorDiv.innerHTML = `<div class="sp-error-text">${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}</div><div class="sp-error-msg">Load Failed</div><button class="sp-error-retry">Retry</button>`;
-    const retryBtn = errorDiv.querySelector('.sp-error-retry') as HTMLButtonElement;
-    retryBtn.onclick = () => retryCurrentImage();
+    errorDiv.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; transform: translateY(-20px); cursor: pointer;" class="retry-btn-wrapper">
+        <div style="display: flex; align-items: center; gap: 10px; background: rgba(200, 40, 40, 0.8); border: 1px solid rgba(255, 255, 255, 0.2); padding: 10px 20px; border-radius: 30px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); margin-bottom: 16px; transition: all 0.2s;">
+          <svg style="color: #fff; width: 20px; height: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+          </svg>
+          <div style="font-size: 15px; color: #fff; font-weight: 500; letter-spacing: 0.5px;">Load Failed. Click to Retry</div>
+        </div>
+        <div style="font-size: 14px; color: rgba(255, 255, 255, 0.5); font-family: monospace; letter-spacing: 1px;">${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}</div>
+      </div>
+    `;
+    const wrapper = errorDiv.querySelector('.retry-btn-wrapper') as HTMLElement;
+    wrapper.onclick = () => retryCurrentImage();
     imageContainer.appendChild(errorDiv);
   }
 
@@ -109,12 +121,34 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     syncImages();
     const img = store.allImages[idx];
     if (img) {
-      // Force re-download by resetting src
+      const viewerUrl = img.dataset.viewerUrl;
+      const nlToken = img.dataset.nl;
+      
+      if (viewerUrl) {
+        showPlaceholder(nlToken ? 'Requesting New Node...' : 'Reloading...');
+        
+        import('../../services/image-loader').then(({ loadImageWithRetry, clearCachedImage }) => {
+          clearCachedImage(viewerUrl);
+          const fetchUrl = nlToken ? `${viewerUrl}${viewerUrl.includes('?') ? '&' : '?'}nl=${nlToken}` : undefined;
+          
+          loadImageWithRetry(viewerUrl, fetchUrl).then(res => {
+            if (res) {
+              img.src = res.src;
+              if (res.nl) img.dataset.nl = res.nl;
+              updateImage();
+            } else {
+              showError();
+            }
+          }).catch(() => showError());
+        });
+        return;
+      }
+
+      // Fallback for native images
       const oldSrc = img.src;
       img.removeAttribute('src');
       img.src = oldSrc;
     }
-    // Re-enter the normal loading flow
     updateImage();
   }
 
@@ -126,43 +160,11 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     }
   }
 
-  let currentDecodePromise: Promise<void> | null = null;
-
-  function renderImageSafely(targetIdx: number, src: string, onComplete?: () => void): void {
-    if (currentImage.src === src) {
-      removePlaceholder();
-      scrollbar.update();
-      if (onComplete) onComplete();
-      return;
-    }
-
-    showPlaceholder('Decoding Image...');
-    currentImage.removeAttribute('src'); // Clear old image instantly
-    currentImage.src = src;
-    
-    const promise = currentImage.decode();
-    currentDecodePromise = promise;
-
-    promise.then(() => {
-      if (currentDecodePromise !== promise || store.currentImageIndex !== targetIdx) return;
-      removePlaceholder();
-      scrollbar.update();
-      if (onComplete) onComplete();
-    }).catch(() => {
-      // Fallback if decode fails or is not supported
-      if (currentDecodePromise !== promise || store.currentImageIndex !== targetIdx) return;
-      removePlaceholder();
-      scrollbar.update();
-      if (onComplete) onComplete();
-    });
-  }
-
   function updateImage(): void {
     clearLoadPoll();
     removeErrorUI();
     const idx = store.currentImageIndex;
 
-    // Re-sync DOM to catch any replacements (error→retry→new img)
     syncImages();
     const img = store.allImages[idx];
 
@@ -173,14 +175,30 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       return;
     }
 
-    if (isImageReady(img)) {
-      renderImageSafely(idx, img.src);
-      return;
+    if (img.src && currentImage.dataset.assignedSrc !== img.src) {
+      currentImage.removeAttribute('src');
+      setTimeout(() => {
+        currentImage.src = img.src;
+        currentImage.dataset.assignedSrc = img.src;
+      }, 0);
+    } else if (!img.src) {
+      currentImage.removeAttribute('src');
+      delete currentImage.dataset.assignedSrc;
+    }
+    
+    currentImage.style.display = 'block';
+
+    if (img.src) {
+      removePlaceholder();
+    } else {
+      showPlaceholder('Waiting for network...');
     }
 
-    showPlaceholder('Downloading Image...');
     scrollbar.update();
-    startLoadPoll(idx);
+
+    if (!isImageReady(img)) {
+      startLoadPoll(idx);
+    }
   }
 
   function startLoadPoll(idx: number): void {
@@ -192,13 +210,12 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
 
     function onImageReady(): void {
       if (store.currentImageIndex !== idx) return;
-      // Re-check with fresh reference in case DOM was swapped
       const img = store.allImages[idx];
       if (img && isImageReady(img)) {
         clearLoadPoll();
-        renderImageSafely(idx, img.src, () => {
-          if (wasAutoPlaying && store.autoPlay) autoPlay.start();
-        });
+        removePlaceholder();
+        scrollbar.update();
+        if (wasAutoPlaying && store.autoPlay) autoPlay.start();
       }
     }
 
@@ -207,7 +224,6 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       if (wasAutoPlaying && store.autoPlay) {
         tryAutoSkip();
       } else {
-        // Non-autoplay: show error UI with retry button
         if (store.currentImageIndex === idx) {
           showError();
         }
@@ -222,14 +238,12 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
         if (nextImg && isImageReady(nextImg)) {
           clearLoadPoll();
           store.currentImageIndex = nextIdx;
-          renderImageSafely(nextIdx, nextImg.src, () => {
-            checkAndLoadNextPage();
-            autoPlay.start();
-          });
+          updateImage();
+          checkAndLoadNextPage();
+          if (wasAutoPlaying && store.autoPlay) autoPlay.start();
           return;
         }
       }
-      // Next image not ready either — skip forward and let it poll again
       if (nextIdx < store.allImages.length || imageErrored) {
         clearLoadPoll();
         store.currentImageIndex = nextIdx < store.allImages.length ? nextIdx : idx;
@@ -240,13 +254,11 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       }
     }
 
-    // Watch for the target image becoming ready via load/error events
     if (lastKnownImg) {
       lastKnownImg.addEventListener('load', onImageReady, { once: true });
       lastKnownImg.addEventListener('error', onImageError, { once: true });
     }
 
-    // Watch for new images appearing in DOM (auto-scroll adding pages)
     const mainBox = document.querySelector(store.settings.scrollMode ? '#gdt' : '#gdt-hidden');
     if (mainBox) {
       loadObserver = new MutationObserver(() => {
@@ -256,32 +268,48 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
           store.allImages = freshImages;
           scrollbar.update();
         }
-        // Check if the image at idx changed (e.g. error→retry created a new <img>)
         const currentImg = store.allImages[idx];
-        if (currentImg && currentImg !== lastKnownImg) {
-          lastKnownImg = currentImg;
-          currentImg.addEventListener('load', onImageReady, { once: true });
-          currentImg.addEventListener('error', onImageError, { once: true });
-          if (isImageReady(currentImg)) onImageReady();
+        if (currentImg) {
+          if (currentImg.src && currentImage.dataset.assignedSrc !== currentImg.src) {
+             currentImage.removeAttribute('src');
+             setTimeout(() => {
+               currentImage.src = currentImg.src;
+               currentImage.dataset.assignedSrc = currentImg.src;
+               removePlaceholder();
+             }, 0);
+          }
+          if (currentImg !== lastKnownImg) {
+            lastKnownImg = currentImg;
+            currentImg.addEventListener('load', onImageReady, { once: true });
+            currentImg.addEventListener('error', onImageError, { once: true });
+            if (isImageReady(currentImg)) onImageReady();
+          }
         }
       });
       loadObserver.observe(mainBox, { childList: true, subtree: true });
     }
 
-    // Fallback poll for cached images that don't fire load
     loadPollTimer = setInterval(() => {
       if (store.currentImageIndex !== idx) { clearLoadPoll(); return; }
-      // Check if the image reference changed (DOM swap not caught by observer)
       const currentImg = store.allImages[idx];
-      if (currentImg && currentImg !== lastKnownImg) {
-        lastKnownImg = currentImg;
-        currentImg.addEventListener('load', onImageReady, { once: true });
-        currentImg.addEventListener('error', onImageError, { once: true });
+      if (currentImg) {
+        if (currentImg.src && currentImage.dataset.assignedSrc !== currentImg.src) {
+           currentImage.removeAttribute('src');
+           setTimeout(() => {
+             currentImage.src = currentImg.src;
+             currentImage.dataset.assignedSrc = currentImg.src;
+             removePlaceholder();
+           }, 0);
+        }
+        if (currentImg !== lastKnownImg) {
+          lastKnownImg = currentImg;
+          currentImg.addEventListener('load', onImageReady, { once: true });
+          currentImg.addEventListener('error', onImageError, { once: true });
+        }
       }
       onImageReady();
-    }, 1000);
+    }, 500);
 
-    // Timeout: if image isn't ready after N seconds and auto-playing, skip forward
     if (wasAutoPlaying && store.autoPlay) {
       loadTimeoutTimer = setTimeout(() => {
         if (store.currentImageIndex !== idx) return;
