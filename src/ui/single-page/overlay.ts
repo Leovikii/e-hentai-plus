@@ -53,7 +53,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     }
   }
 
-  function showPlaceholder(): void {
+  function showPlaceholder(statusText: string = 'Loading...'): void {
     currentImage.style.display = 'none';
     removeErrorUI();
     const existing = imageContainer.querySelector('.sp-placeholder');
@@ -61,7 +61,11 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
 
     const ph = document.createElement('div');
     ph.className = 'sp-placeholder';
-    ph.innerHTML = `<div class="sp-placeholder-pulse"></div><div class="sp-placeholder-text">${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}</div>`;
+    ph.innerHTML = `
+      <div class="sp-placeholder-pulse"></div>
+      <div class="sp-placeholder-text">${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}</div>
+      <div class="sp-placeholder-status" style="margin-top: 10px; font-size: 14px; opacity: 0.8; font-weight: bold; letter-spacing: 0.5px;">${statusText}</div>
+    `;
     imageContainer.appendChild(ph);
   }
 
@@ -115,6 +119,37 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     }
   }
 
+  let currentDecodePromise: Promise<void> | null = null;
+
+  function renderImageSafely(targetIdx: number, src: string, onComplete?: () => void): void {
+    if (currentImage.src === src) {
+      removePlaceholder();
+      scrollbar.update();
+      if (onComplete) onComplete();
+      return;
+    }
+
+    showPlaceholder('Decoding Image...');
+    currentImage.removeAttribute('src'); // Clear old image instantly
+    currentImage.src = src;
+    
+    const promise = currentImage.decode();
+    currentDecodePromise = promise;
+
+    promise.then(() => {
+      if (currentDecodePromise !== promise || store.currentImageIndex !== targetIdx) return;
+      removePlaceholder();
+      scrollbar.update();
+      if (onComplete) onComplete();
+    }).catch(() => {
+      // Fallback if decode fails or is not supported
+      if (currentDecodePromise !== promise || store.currentImageIndex !== targetIdx) return;
+      removePlaceholder();
+      scrollbar.update();
+      if (onComplete) onComplete();
+    });
+  }
+
   function updateImage(): void {
     clearLoadPoll();
     removeErrorUI();
@@ -125,20 +160,18 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     const img = store.allImages[idx];
 
     if (!img) {
-      showPlaceholder();
+      showPlaceholder('Waiting for network...');
       scrollbar.update();
       startLoadPoll(idx);
       return;
     }
 
     if (isImageReady(img)) {
-      removePlaceholder();
-      currentImage.src = img.src;
-      scrollbar.update();
+      renderImageSafely(idx, img.src);
       return;
     }
 
-    showPlaceholder();
+    showPlaceholder('Downloading Image...');
     scrollbar.update();
     startLoadPoll(idx);
   }
@@ -156,10 +189,9 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       const img = store.allImages[idx];
       if (img && isImageReady(img)) {
         clearLoadPoll();
-        removePlaceholder();
-        currentImage.src = img.src;
-        scrollbar.update();
-        if (wasAutoPlaying && store.autoPlay) autoPlay.start();
+        renderImageSafely(idx, img.src, () => {
+          if (wasAutoPlaying && store.autoPlay) autoPlay.start();
+        });
       }
     }
 
@@ -183,11 +215,10 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
         if (nextImg && isImageReady(nextImg)) {
           clearLoadPoll();
           store.currentImageIndex = nextIdx;
-          removePlaceholder();
-          currentImage.src = nextImg.src;
-          scrollbar.update();
-          checkAndLoadNextPage();
-          autoPlay.start();
+          renderImageSafely(nextIdx, nextImg.src, () => {
+            checkAndLoadNextPage();
+            autoPlay.start();
+          });
           return;
         }
       }
