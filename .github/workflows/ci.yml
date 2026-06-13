@@ -56,7 +56,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.VERSION }}
-          name: Release ${{ env.VERSION }}
+          name: e-hentai-plus ${{ env.VERSION }}
           body: |
             ### Changes
             ${{ env.CHANGELOG }}
