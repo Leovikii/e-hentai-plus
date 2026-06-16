@@ -4,7 +4,7 @@ export const q = (selector: string, root: Document | Element = document): Elemen
 export const qa = (selector: string, root: Document | Element = document): NodeListOf<Element> =>
   root.querySelectorAll(selector);
 
-const HIDDEN_SELECTORS = ['#nb', '#fb', '#cdiv', '.gt', '.gpc', '.ptt', '#db'];
+const HIDDEN_SELECTORS = ['#fb', '#cdiv', '.gt', '.gpc', '.ptt', '#db'];
 
 export function hideOriginalElements(): void {
   HIDDEN_SELECTORS.forEach(sel => {
@@ -14,6 +14,7 @@ export function hideOriginalElements(): void {
 }
 
 export function isImageReady(img: HTMLImageElement): boolean {
+  if (img.dataset.realSrc) return true;
   return !!(img && img.src && !img.src.includes('data:') && img.complete && img.naturalWidth > 0);
 }
 

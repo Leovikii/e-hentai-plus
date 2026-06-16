@@ -6,6 +6,7 @@ import { createSidebar } from './sidebar';
 import { setupNavigation } from './navigation';
 import { createAutoPlay } from './auto-play';
 import { createStatusHUD } from '../components/status-hud';
+import { i18n } from '../../utils/i18n';
 import type { SinglePageModeHandle } from '../../types';
 
 export interface OverlayDeps {
@@ -73,7 +74,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     currentImage.style.display = 'none';
     statusHUD.show({
       status: 'error',
-      text: 'Load Failed. Click to Retry',
+      text: i18n.loadFailed,
       pageText: `${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}`,
       onClick: () => retryCurrentImage()
     });
@@ -93,7 +94,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       const nlToken = img.dataset.nl;
       
       if (viewerUrl) {
-        showPlaceholder(nlToken ? 'Requesting New Node...' : 'Reloading...');
+        showPlaceholder(nlToken ? i18n.requestingNewNode : i18n.reloading);
         
         import('../../services/image-loader').then(({ loadImageWithRetry, clearCachedImage }) => {
           clearCachedImage(viewerUrl);
@@ -137,13 +138,13 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     const img = store.allImages[idx];
 
     if (!img) {
-      showPlaceholder('Waiting for network...');
+      showPlaceholder(i18n.waitingForNetwork);
       sidebar.update();
       startLoadPoll(idx);
       return;
     }
 
-    const imgSrc = (img as HTMLImageElement).src;
+    const imgSrc = (img as HTMLImageElement).dataset.realSrc || (img as HTMLImageElement).src;
 
     const TRANSPARENT_GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
@@ -162,12 +163,12 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
 
     if (imgSrc) {
       if (!isImageReady(img as HTMLImageElement)) {
-        showPlaceholder('Downloading...');
+        showPlaceholder(i18n.downloading);
       } else {
         removePlaceholder();
       }
     } else {
-      showPlaceholder('Waiting for network...');
+      showPlaceholder(i18n.waitingForNetwork);
     }
 
     sidebar.update();
@@ -245,15 +246,15 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
         }
         const currentImg = store.allImages[idx];
         if (currentImg) {
-           const imgSrc = (currentImg as HTMLImageElement).src;
+           const imgSrc = (currentImg as HTMLImageElement).dataset.realSrc || (currentImg as HTMLImageElement).src;
            if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
              currentImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
              setTimeout(() => {
                currentImage.src = imgSrc;
                currentImage.dataset.assignedSrc = imgSrc;
                if (!isImageReady(currentImg as HTMLImageElement)) {
-                 showPlaceholder('Downloading...');
-               } else {
+                showPlaceholder(i18n.downloading);
+              } else {
                  removePlaceholder();
                }
              }, 0);
@@ -275,7 +276,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       if (store.currentImageIndex !== idx) { clearLoadPoll(); return; }
       const currentImg = store.allImages[idx];
       if (currentImg) {
-        const imgSrc = (currentImg as HTMLImageElement).src;
+        const imgSrc = (currentImg as HTMLImageElement).dataset.realSrc || (currentImg as HTMLImageElement).src;
         if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
            currentImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
            setTimeout(() => {
@@ -344,7 +345,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   function open(): void {
     store.allImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
     if (store.allImages.length === 0) {
-      alert('Please wait for images to load');
+      alert(i18n.waitImagesToLoad);
       return;
     }
 

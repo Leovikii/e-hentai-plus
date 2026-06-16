@@ -77,6 +77,22 @@ function setErrorState(
   wrapper.onclick = createRetryHandler(url, placeholder, pIndex, index, nlToken);
 }
 
+let virtualizationObserver: IntersectionObserver | null = null;
+
+function initVirtualization() {
+  if (virtualizationObserver) return;
+  virtualizationObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const img = entry.target as HTMLImageElement;
+      if (entry.isIntersecting) {
+        img.classList.remove('sp-virtualized');
+      } else {
+        img.classList.add('sp-virtualized');
+      }
+    });
+  }, { rootMargin: '3000px' });
+}
+
 export function processBatch(links: string[], pIndex: number, prepend = false): void {
   const container = store.settings.scrollMode
     ? document.querySelector('#gdt') as HTMLElement
@@ -84,6 +100,8 @@ export function processBatch(links: string[], pIndex: number, prepend = false): 
   const batchDiv = document.createElement('div');
   batchDiv.className = 'page-batch';
   const fragment = document.createDocumentFragment();
+
+  initVirtualization();
 
   links.forEach((url, index) => {
     const placeholder = document.createElement('div');
@@ -110,17 +128,30 @@ export function processBatch(links: string[], pIndex: number, prepend = false): 
           const img = document.createElement('img');
           img.className = 'r-img';
           img.dataset.viewerUrl = url;
+          img.dataset.realSrc = res.src;
           if (res.nl) img.dataset.nl = res.nl;
 
           img.onerror = () => {
             if (placeholder.parentNode) {
               setErrorState(placeholder, url, pIndex, index, res.nl);
               placeholder.parentNode.replaceChild(placeholder, img);
+              virtualizationObserver?.unobserve(img);
+            }
+          };
+
+          img.onload = () => {
+            if (!img.dataset.locked && img.naturalWidth > 0) {
+              img.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+              img.style.width = '100%';
+              img.style.maxWidth = `${img.naturalWidth}px`;
+              img.style.height = 'auto';
+              img.dataset.locked = 'true';
             }
           };
 
           img.src = res.src;
           placeholder.parentNode?.replaceChild(img, placeholder);
+          virtualizationObserver?.observe(img);
         } else {
           setErrorState(placeholder, url, pIndex, index);
         }
@@ -139,13 +170,11 @@ export function processBatch(links: string[], pIndex: number, prepend = false): 
 }
 
 export function setupAutoScroll(): void {
-  if (!store.settings.autoScroll) return;
-
   const scrollSent = document.createElement('div');
   document.body.appendChild(scrollSent);
 
   const pageObs = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting && store.nextUrl && !store.isFetching && store.settings.autoScroll) {
+    if (entries[0].isIntersecting && store.nextUrl && !store.isFetching) {
       store.isFetching = true;
       fetchPageLinks(store.nextUrl).then(({ doc, links }) => {
         const nUrl = getNextUrl(doc);

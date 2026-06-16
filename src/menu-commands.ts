@@ -8,11 +8,6 @@ export function registerMenuCommands(): void {
     location.reload();
   });
 
-  GM_registerMenuCommand('Toggle Auto Scroll', () => {
-    store.updateSetting('autoScroll', !store.settings.autoScroll);
-    alert(`Auto Scroll ${store.settings.autoScroll ? 'Enabled' : 'Disabled'}`);
-    location.reload();
-  });
 
   GM_registerMenuCommand('Toggle Control Display', () => {
     store.updateSetting('showControl', !store.settings.showControl);

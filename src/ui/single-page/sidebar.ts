@@ -155,8 +155,9 @@ export function createSidebar(
         label.className = 'sp-thumb-label';
         el.appendChild(label);
       }
-      if (thumbImg.src !== (img as HTMLImageElement).src) {
-        thumbImg.src = (img as HTMLImageElement).src;
+      const realSrc = (img as HTMLImageElement).dataset.realSrc || (img as HTMLImageElement).src;
+      if (thumbImg.src !== realSrc) {
+        thumbImg.src = realSrc;
       }
       const label = el.querySelector('.sp-thumb-label') as HTMLElement;
       if (label) label.textContent = String(store.imageOffset + index + 1);
