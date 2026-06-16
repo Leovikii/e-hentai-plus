@@ -385,13 +385,14 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
 
       if (nativeImages.length > 0) {
         let minDistance = Infinity;
-        nativeImages.forEach((img, index) => {
+        let bestNativeImg: HTMLElement | null = null;
+        nativeImages.forEach((img) => {
           const rect = img.getBoundingClientRect();
           if (rect.width === 0 || rect.height === 0) return;
           
           const viewportCenter = window.innerHeight / 2;
           if (rect.top <= viewportCenter && rect.bottom >= viewportCenter) {
-            startIndex = index;
+            bestNativeImg = img;
             minDistance = -1;
           } else if (minDistance !== -1) {
             const distanceToCenter = rect.bottom < viewportCenter 
@@ -400,11 +401,21 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
               
             if (distanceToCenter < minDistance) {
               minDistance = distanceToCenter;
-              startIndex = index;
+              bestNativeImg = img;
             }
           }
         });
-        startIndex = Math.max(0, Math.min(startIndex, store.allImages.length - 1));
+        
+        if (bestNativeImg) {
+          const currentSrc = (bestNativeImg as HTMLImageElement).dataset?.src || (bestNativeImg as HTMLImageElement).src;
+          const foundIdx = store.allImages.findIndex(i => {
+            const iSrc = (i as HTMLImageElement).dataset?.realSrc || (i as HTMLImageElement).dataset?.src || (i as HTMLImageElement).src;
+            return iSrc === currentSrc;
+          });
+          if (foundIdx !== -1) {
+            startIndex = foundIdx;
+          }
+        }
       } else {
         startIndex = 0;
       }
@@ -452,26 +463,40 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
         }
       }
 
-      if (store.currentImageIndex >= 0 && store.currentImageIndex < nativeImages.length) {
-        const targetImg = nativeImages[store.currentImageIndex];
-        if (targetImg) {
-          setTimeout(() => {
-            targetImg.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }, 100);
+      const targetImgFallback = store.allImages[store.currentImageIndex];
+      const batchDiv = targetImgFallback?.closest('.page-batch') as HTMLElement | null;
+
+      if (batchDiv && batchDiv.dataset.pageUrl) {
+        const targetUrl = new URL(batchDiv.dataset.pageUrl, window.location.href);
+        const currentUrl = new URL(window.location.href);
+        // If the image belongs to a different page, navigate to it!
+        if (targetUrl.pathname !== currentUrl.pathname || targetUrl.search !== currentUrl.search) {
+          window.location.href = targetUrl.toString();
           return;
         }
       }
 
-      const targetImgFallback = store.allImages[store.currentImageIndex];
-      const batchDiv = targetImgFallback?.closest('.page-batch') as HTMLElement | null;
-      if (batchDiv && batchDiv.dataset.pageUrl) {
-        const targetUrl = new URL(batchDiv.dataset.pageUrl, window.location.href);
-        const currentUrl = new URL(window.location.href);
-        if (targetUrl.pathname !== currentUrl.pathname || targetUrl.search !== currentUrl.search) {
-          window.location.href = targetUrl.toString();
+      // If we are still on the same page, we can attempt to scroll to the native image
+      if (store.currentImageIndex >= 0 && nativeImages.length > 0) {
+        // Find which index this image represents IN THE NATIVE PAGE
+        // We can do this by finding the img in nativeImages that has the same src
+        const currentSrc = (targetImgFallback as HTMLImageElement)?.dataset?.realSrc || (targetImgFallback as HTMLImageElement)?.src;
+        if (currentSrc) {
+          const targetNativeImg = nativeImages.find(img => {
+            const nativeSrc = (img as HTMLImageElement).dataset?.src || (img as HTMLImageElement).src;
+            return nativeSrc === currentSrc;
+          });
+
+          if (targetNativeImg) {
+            setTimeout(() => {
+              targetNativeImg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+            return;
+          }
         }
-        return;
       }
+
+
 
       // Fallback for sites that use ?p= parameter for pagination
       if (adapter?.name === 'E-Hentai' || adapter?.name === 'ExHentai') {
@@ -528,7 +553,7 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
       deps.onLoadPrevPage(links, prevUrl ?? null);
 
       store.currentImageIndex += prevCount;
-      store.imageOffset -= prevCount;
+      store.imageOffset = Math.max(0, store.imageOffset - prevCount);
       
       if (prevCount > 0 && store.currentImageIndex === prevCount) {
         store.currentImageIndex--; // Auto-advance to the newly loaded previous image
