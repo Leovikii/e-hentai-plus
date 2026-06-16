@@ -126,6 +126,24 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
     }
   }
 
+  function applyOverlaySrc(imgSrc: string, currentImg: HTMLElement): void {
+    if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
+      currentImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+      setTimeout(() => {
+        currentImage.src = imgSrc;
+        currentImage.dataset.assignedSrc = imgSrc;
+        if (!isImageReady(currentImg as HTMLImageElement)) {
+          showPlaceholder(i18n.downloading);
+        } else {
+          removePlaceholder();
+        }
+      }, 0);
+    } else if (!imgSrc && currentImage.dataset.assignedSrc) {
+      currentImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+      delete currentImage.dataset.assignedSrc;
+    }
+  }
+
   function updateImage(): void {
     clearLoadPoll();
     removeErrorUI();
@@ -142,29 +160,10 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
     }
 
     const imgSrc = (img as HTMLImageElement).dataset.realSrc || (img as HTMLImageElement).src;
-
-    const TRANSPARENT_GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-
-    if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
-      currentImage.src = TRANSPARENT_GIF;
-      setTimeout(() => {
-        currentImage.src = imgSrc;
-        currentImage.dataset.assignedSrc = imgSrc;
-      }, 0);
-    } else if (!imgSrc) {
-      currentImage.src = TRANSPARENT_GIF;
-      delete currentImage.dataset.assignedSrc;
-    }
-    
+    applyOverlaySrc(imgSrc, img);
     currentImage.style.display = 'block';
 
-    if (imgSrc) {
-      if (!isImageReady(img as HTMLImageElement)) {
-        showPlaceholder(i18n.downloading);
-      } else {
-        removePlaceholder();
-      }
-    } else {
+    if (!imgSrc) {
       showPlaceholder(i18n.waitingForNetwork);
     }
 
@@ -244,18 +243,7 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
         const currentImg = store.allImages[idx];
         if (currentImg) {
            const imgSrc = (currentImg as HTMLImageElement).dataset.realSrc || (currentImg as HTMLImageElement).src;
-           if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
-             currentImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-             setTimeout(() => {
-               currentImage.src = imgSrc;
-               currentImage.dataset.assignedSrc = imgSrc;
-               if (!isImageReady(currentImg as HTMLImageElement)) {
-                showPlaceholder(i18n.downloading);
-              } else {
-                 removePlaceholder();
-               }
-             }, 0);
-          }
+           applyOverlaySrc(imgSrc, currentImg);
           if (currentImg !== lastKnownImg) {
             lastKnownImg = currentImg;
             if (currentImg.tagName === 'IMG') {
@@ -274,18 +262,7 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
       const currentImg = store.allImages[idx];
       if (currentImg) {
         const imgSrc = (currentImg as HTMLImageElement).dataset.realSrc || (currentImg as HTMLImageElement).src;
-        if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
-           currentImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-           setTimeout(() => {
-             currentImage.src = imgSrc;
-             currentImage.dataset.assignedSrc = imgSrc;
-             if (!isImageReady(currentImg as HTMLImageElement)) {
-               showPlaceholder('Downloading...');
-             } else {
-               removePlaceholder();
-             }
-           }, 0);
-        }
+        applyOverlaySrc(imgSrc, currentImg);
         if (currentImg !== lastKnownImg) {
           lastKnownImg = currentImg;
           if (currentImg.tagName === 'IMG') {
