@@ -13,7 +13,7 @@ export interface SiteAdapter {
   }>;
 
   // Given an image url/link, fetch the actual image URL
-  resolveImage: (url: string, nlToken?: string) => Promise<{ src: string, nl?: string } | null>;
+  resolveImage(url: string, ...args: any[]): Promise<{src: string, nl?: string} | null>;
 
   // Fetch the next page and get its links
   fetchPage: (url: string) => Promise<{
