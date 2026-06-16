@@ -1,8 +1,5 @@
 import { store } from '../state/store';
-import { fetchPageLinks } from '../utils/dom';
 import { CFG } from '../state/config';
-import { getNextUrl } from '../services/page-parser';
-import { loadImageWithRetry, clearCachedImage } from '../services/image-loader';
 
 export function createRetryHandler(
   originalUrl: string,
@@ -26,10 +23,10 @@ export function createRetryHandler(
       </div>
     `;
 
-    clearCachedImage(originalUrl);
-    const fetchUrl = nlToken ? `${originalUrl}${originalUrl.includes('?') ? '&' : '?'}nl=${nlToken}` : undefined;
+    const adapter = store.activeAdapter;
+    if (!adapter) return;
 
-    loadImageWithRetry(originalUrl, fetchUrl).then(res => {
+    adapter.resolveImage(originalUrl, nlToken || undefined).then(res => {
       if (res) {
         const newImg = document.createElement('img');
         newImg.src = res.src;
@@ -93,10 +90,7 @@ function initVirtualization() {
   }, { rootMargin: '3000px' });
 }
 
-export function processBatch(links: string[], pIndex: number, prepend = false): void {
-  const container = store.settings.scrollMode
-    ? document.querySelector('#gdt') as HTMLElement
-    : document.querySelector('#gdt-hidden') as HTMLElement;
+export function processBatch(links: string[], pIndex: number, container: HTMLElement, prepend = false): void {
   const batchDiv = document.createElement('div');
   batchDiv.className = 'page-batch';
   const fragment = document.createDocumentFragment();
@@ -120,10 +114,9 @@ export function processBatch(links: string[], pIndex: number, prepend = false): 
     `;
     fragment.appendChild(placeholder);
 
-    const globalIndex = (pIndex - 1) * store.perPage + index;
-
-    loadImageWithRetry(url, undefined, globalIndex)
-      .then(res => {
+    const adapter = store.activeAdapter;
+    if (!adapter) return;
+    adapter.resolveImage(url).then(res => {
         if (res) {
           const img = document.createElement('img');
           img.className = 'r-img';
@@ -176,11 +169,9 @@ export function setupAutoScroll(): void {
   const pageObs = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting && store.nextUrl && !store.isFetching) {
       store.isFetching = true;
-      fetchPageLinks(store.nextUrl).then(({ doc, links }) => {
-        const nUrl = getNextUrl(doc);
-
+      store.activeAdapter!.fetchPage(store.nextUrl).then(({ links, nextUrl: nUrl }) => {
         store.currPage++;
-        processBatch(links, store.currPage);
+        processBatch(links, store.currPage, document.querySelector('.scroll-mode #gdt, .scroll-mode .gm, .scroll-mode .entry-content, .scroll-mode .wp-block-post-content') as HTMLElement || document.body);
 
         store.nextUrl = nUrl;
         store.isFetching = false;

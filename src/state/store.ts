@@ -1,5 +1,6 @@
 import { GM_setValue } from '$';
 import type { UserSettings } from '../types';
+import type { SiteAdapter } from '../types/site-adapter';
 import { loadSettings } from './config';
 
 type StoreEvent = 'settingsChanged' | 'readerModeChanged';
@@ -8,6 +9,8 @@ type Listener = () => void;
 class Store {
   private _settings: UserSettings;
   private listeners = new Map<StoreEvent, Set<Listener>>();
+
+  activeAdapter: SiteAdapter | null = null;
 
   // Page state
   currPage = 1;

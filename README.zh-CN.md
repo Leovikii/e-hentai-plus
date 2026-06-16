@@ -1,6 +1,11 @@
-# E-Hentai Plus
+# Hentai Reader (原 E-Hentai Plus)
 
-为 E-Hentai / ExHentai 提供增强阅读体验，支持无限卷轴、全屏阅读器和智能图片加载。
+由 E-Hentai Plus 升级而来的多站点通用阅读框架。
+为你提供增强阅读体验，支持无限卷轴、全屏阅读器模式和智能图片加载。
+
+目前已适配以下网站（未来将适配更多）：
+- E-Hentai / ExHentai
+- 4KHD
 
 [English](README.md)
 

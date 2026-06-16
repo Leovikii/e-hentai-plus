@@ -25,6 +25,11 @@ export default defineConfig({
         match: [
           'https://e-hentai.org/g/*',
           'https://exhentai.org/g/*',
+          'https://e-hentai.org/s/*',
+          'https://exhentai.org/s/*',
+          'https://www.4khd.com/*',
+          'https://aynzl.uuss.uk/*',
+          'https://zrxiu.ssuu.uk/*',
         ],
         grant: [
           'GM_getValue',

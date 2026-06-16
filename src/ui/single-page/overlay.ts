@@ -96,11 +96,10 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       if (viewerUrl) {
         showPlaceholder(nlToken ? i18n.requestingNewNode : i18n.reloading);
         
-        import('../../services/image-loader').then(({ loadImageWithRetry, clearCachedImage }) => {
-          clearCachedImage(viewerUrl);
-          const fetchUrl = nlToken ? `${viewerUrl}${viewerUrl.includes('?') ? '&' : '?'}nl=${nlToken}` : undefined;
-          
-          loadImageWithRetry(viewerUrl, fetchUrl).then(res => {
+        const adapter = store.activeAdapter;
+        if (!adapter) return;
+
+        adapter.resolveImage(viewerUrl, nlToken || undefined).then(res => {
             if (res) {
               (img as HTMLImageElement).src = res.src;
               if (res.nl) img.dataset.nl = res.nl;
@@ -109,7 +108,6 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
               showError();
             }
           }).catch(() => showError());
-        });
         return;
       }
 

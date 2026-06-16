@@ -1,6 +1,11 @@
-# E-Hentai Plus
+# Hentai Reader (Formerly E-Hentai Plus)
 
-Enhanced reading experience for E-Hentai / ExHentai with infinite scroll, full-screen reader, and smart image loading.
+A generalized multi-site reading framework upgraded from E-Hentai Plus. 
+It provides an enhanced reading experience with infinite scroll, full-screen reader mode, and smart image loading.
+
+Currently supported websites (with more to come):
+- E-Hentai / ExHentai
+- 4KHD
 
 [中文](README.zh-CN.md)
 

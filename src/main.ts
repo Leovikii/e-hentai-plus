@@ -1,60 +1,41 @@
 import 'virtual:uno.css';
 import './ui/styles.css';
-
 import { store } from './state/store';
-import { qa } from './utils/dom';
-import { hideOriginalElements } from './utils/dom';
-import { calcTotal, getNextUrl, getPrevUrl, parseImageRange } from './services/page-parser';
-import { setupPrefetchListener } from './services/prefetch';
+import { SiteManager } from './sites/site-manager';
 import { processBatch, setupAutoScroll } from './features/scroll-mode';
 import { initSinglePageMode } from './features/single-page-mode';
 import { createFloatControl } from './ui/float-control';
 import { registerMenuCommands } from './menu-commands';
 import { initMemoryManager } from './features/memory-manager';
 
-(function main() {
-  const mainBox = document.querySelector('#gdt') as HTMLElement;
-  if (!mainBox) return;
+(async function main() {
+  const adapter = SiteManager.getAdapter(window.location.href);
+  if (!adapter) return; // Exit if no adapter matches current URL
 
-  // Parse initial page state
-  const urlP = new URLSearchParams(window.location.search).get('p');
-  store.currPage = urlP ? parseInt(urlP) + 1 : 1;
+  store.activeAdapter = adapter;
+  const initData = await adapter.init(document);
+  if (!initData.links || initData.links.length === 0) return; // Nothing to process
 
-  const initLinks = Array.from(qa('#gdt a', document)).map(a => (a as HTMLAnchorElement).href);
-  store.perPage = initLinks.length || 20;
+  store.totalPage = initData.totalPage ?? 1;
+  store.nextUrl = initData.nextUrl;
+  store.prevUrl = initData.prevUrl;
+  store.perPage = initData.links.length;
 
-  const galleryId = window.location.pathname;
-  const savedTotal = localStorage.getItem(`eh_total_${galleryId}`);
-
-  if (savedTotal && parseInt(savedTotal) > 0) {
-    store.totalPage = parseInt(savedTotal);
-  } else {
-    store.totalPage = calcTotal(document, initLinks.length);
-    localStorage.setItem(`eh_total_${galleryId}`, String(store.totalPage));
-  }
-
-  store.nextUrl = getNextUrl(document);
-  store.prevUrl = getPrevUrl(document);
+  const container = adapter.getContainer();
+  if (!container && store.settings.scrollMode) return;
 
   if (store.settings.scrollMode) {
-    // Scroll mode: replace original page with custom scroll view
     document.documentElement.classList.add('scroll-mode');
-    hideOriginalElements();
-    mainBox.innerHTML = '';
-    processBatch(initLinks, store.currPage);
+    adapter.hideOriginalElements?.();
+    if (container) container.innerHTML = '';
+    processBatch(initData.links, store.currPage, container!);
     setupAutoScroll();
-    setupPrefetchListener();
   } else {
-    // No scroll mode: keep original page, load images into hidden container for reader mode
-    const range = parseImageRange(document);
-    if (range) {
-      store.imageOffset = range.start - 1; // Convert 1-based to 0-based
-    }
     const hiddenBox = document.createElement('div');
     hiddenBox.id = 'gdt-hidden';
     hiddenBox.style.display = 'none';
     document.body.appendChild(hiddenBox);
-    processBatch(initLinks, store.currPage);
+    processBatch(initData.links, store.currPage, hiddenBox);
   }
 
   // Initialize single page mode with lazy wrapper for circular dependency
