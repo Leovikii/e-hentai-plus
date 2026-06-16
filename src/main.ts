@@ -10,9 +10,11 @@ import { initMemoryManager } from './features/memory-manager';
 
 (async function main() {
   const adapter = SiteManager.getAdapter(window.location.href);
-  if (!adapter) return; // Exit if no adapter matches current URL
-
+  if (!adapter) {
+    return;
+  }
   store.activeAdapter = adapter;
+  store.reloadSettings();
   const initData = await adapter.init(document);
   if (!initData.links || initData.links.length === 0) return; // Nothing to process
 
@@ -21,21 +23,26 @@ import { initMemoryManager } from './features/memory-manager';
   store.prevUrl = initData.prevUrl;
   store.perPage = initData.links.length;
 
-  const container = adapter.getContainer();
-  if (!container && store.settings.scrollMode) return;
+  let container = adapter.getContainer();
+  // We no longer abort if container is missing in scroll mode. We will create a fallback.
 
   if (store.settings.scrollMode) {
     document.documentElement.classList.add('scroll-mode');
     adapter.hideOriginalElements?.();
-    if (container) container.innerHTML = '';
-    processBatch(initData.links, store.currPage, container!);
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'gdt';
+      document.body.appendChild(container);
+    }
+    container.innerHTML = '';
+    processBatch(initData.links, store.currPage, container, false, window.location.href);
     setupAutoScroll();
   } else {
     const hiddenBox = document.createElement('div');
     hiddenBox.id = 'gdt-hidden';
     hiddenBox.style.display = 'none';
     document.body.appendChild(hiddenBox);
-    processBatch(initData.links, store.currPage, hiddenBox);
+    processBatch(initData.links, store.currPage, hiddenBox, false, window.location.href);
   }
 
   // Initialize single page mode with lazy wrapper for circular dependency

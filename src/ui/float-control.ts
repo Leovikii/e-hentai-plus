@@ -22,20 +22,6 @@ export function createFloatControl(spmHandle: SinglePageModeHandle): void {
     autoPlayBtn.classList.toggle('active', newValue);
   };
 
-  const updatePosition = () => {
-    const adapter = store.activeAdapter;
-    const container = adapter ? adapter.getContainer() : null;
-    const targetRight = container ? window.innerWidth - container.getBoundingClientRect().right : 40;
-    const controlWidth = floatControl.offsetWidth || 110;
-    const finalRight = Math.max(20, targetRight - 40 - controlWidth);
-    floatControl.style.right = `${finalRight}px`;
-  };
-
-  const ro = new ResizeObserver(updatePosition);
-  ro.observe(document.body);
-  // Observer container too if possible, but we don't have it initialized yet, so just body for now.
-  setTimeout(updatePosition, 100);
-
   // Center circle — reader mode toggle
   const circleControl = document.createElement('div');
   circleControl.className = 'circle-control';

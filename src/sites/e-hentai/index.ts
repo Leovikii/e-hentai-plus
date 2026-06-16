@@ -113,6 +113,7 @@ export const EHentaiAdapter: SiteAdapter = {
     return {
       links,
       nextUrl: getNextUrl(doc),
+      prevUrl: getPrevUrl(doc),
     };
   },
 

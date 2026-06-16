@@ -27,9 +27,9 @@ export default defineConfig({
           'https://exhentai.org/g/*',
           'https://e-hentai.org/s/*',
           'https://exhentai.org/s/*',
-          'https://www.4khd.com/*',
-          'https://aynzl.uuss.uk/*',
-          'https://zrxiu.ssuu.uk/*',
+          '*://*.4khd.com/*',
+          '*://*.uuss.uk/*',
+          '*://*.ssuu.uk/*',
         ],
         grant: [
           'GM_getValue',

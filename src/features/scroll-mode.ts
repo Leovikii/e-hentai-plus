@@ -90,12 +90,22 @@ function initVirtualization() {
   }, { rootMargin: '3000px' });
 }
 
-export function processBatch(links: string[], pIndex: number, container: HTMLElement, prepend = false): void {
+export function processBatch(links: string[], pIndex: number, container?: HTMLElement, prepend = false, pageUrl?: string): void {
   const batchDiv = document.createElement('div');
   batchDiv.className = 'page-batch';
+  if (pageUrl) {
+    batchDiv.dataset.pageUrl = pageUrl;
+  }
   const fragment = document.createDocumentFragment();
 
   initVirtualization();
+
+  let targetContainer = container;
+  if (!targetContainer) {
+    targetContainer = document.querySelector('#gdt-hidden') as HTMLElement || 
+                      document.querySelector('.scroll-mode #gdt, .scroll-mode .gm, .scroll-mode .entry-content, .scroll-mode .wp-block-post-content, .scroll-mode .post-content') as HTMLElement || 
+                      document.body;
+  }
 
   links.forEach((url, index) => {
     const placeholder = document.createElement('div');
@@ -155,10 +165,10 @@ export function processBatch(links: string[], pIndex: number, container: HTMLEle
   });
 
   batchDiv.appendChild(fragment);
-  if (prepend && container.firstChild) {
-    container.insertBefore(batchDiv, container.firstChild);
+  if (prepend && targetContainer.firstChild) {
+    targetContainer.insertBefore(batchDiv, targetContainer.firstChild);
   } else {
-    container.appendChild(batchDiv);
+    targetContainer.appendChild(batchDiv);
   }
 }
 

@@ -11,9 +11,13 @@ export const CFG: AppConfig = {
   imageLoadTimeout: 8000,
 };
 
-export function loadSettings(): UserSettings {
+export function loadSettings(adapterName?: string): UserSettings {
+  const prefix = adapterName ? `${adapterName}_` : '';
+  const is4KHD = adapterName === '4KHD';
+  const globalScrollMode = GM_getValue('scrollMode', true);
+  
   return {
-    scrollMode: GM_getValue('scrollMode', true),
+    scrollMode: GM_getValue(`${prefix}scrollMode`, is4KHD ? true : globalScrollMode),
     showControl: GM_getValue('showControl', true),
     autoEnterSinglePage: GM_getValue('autoEnterSinglePage', false),
     autoPlayInterval: GM_getValue('autoPlayInterval', 3000),

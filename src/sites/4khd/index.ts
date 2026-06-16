@@ -1,10 +1,11 @@
 import type { SiteAdapter } from '../../types/site-adapter';
 import { qa } from '../../utils/dom';
+import { store } from '../../state/store';
 
 const parser = new DOMParser();
 
 function extract4KHDImages(doc: Document): string[] {
-  const images = Array.from(qa('figure.wp-block-image>a>img, #basicExample>a>img, .entry-content>p>a>img', doc));
+  const images = Array.from(qa('figure.wp-block-image img, #basicExample img, .entry-content p img', doc));
   return images.map(img => {
     let src = (img as HTMLImageElement).src;
     src = src.replace(/i\d\.wp\.com\//, '');
@@ -12,18 +13,48 @@ function extract4KHDImages(doc: Document): string[] {
     src = src.replace(/\?.+$/, '');
     src = src.replace(/\/w\d+-rw\//, '/w2500-h2500-rw/');
     return src;
-  });
+  }).filter(src => src && !src.includes('avatar')); // filter out possible junk
 }
 
 function get4KHDNextUrl(doc: Document): string | null {
-  const nextBtn = document.querySelector('.page-link-box a.next') || 
-                  Array.from(qa('.page-link-box a', doc)).pop();
-  
-  if (nextBtn && (nextBtn as HTMLAnchorElement).href) {
-    const url = (nextBtn as HTMLAnchorElement).href;
-    // Don't return the same page or undefined
-    if (url !== window.location.href) {
-      return url;
+  const pageBox = doc.querySelector('.page-link-box, .pagination, .nav-links, .nav-previous');
+  if (pageBox) {
+    const current = pageBox.querySelector('.current, .active') || Array.from(pageBox.querySelectorAll('span')).find(s => !s.querySelector('a'));
+    if (current) {
+      const currentPageNum = parseInt(current.textContent || '1', 10);
+      if (!isNaN(currentPageNum)) {
+        const nextBtn = Array.from(pageBox.querySelectorAll('a')).find(a => parseInt(a.textContent || '0', 10) === currentPageNum + 1);
+        if (nextBtn && nextBtn.href && nextBtn.href !== window.location.href) {
+          return nextBtn.href;
+        }
+      }
+    }
+    const nextBtnFallback = pageBox.querySelector('a.next') || doc.querySelector('a.next.page-numbers');
+    if (nextBtnFallback && (nextBtnFallback as HTMLAnchorElement).href) {
+      const url = (nextBtnFallback as HTMLAnchorElement).href;
+      if (url !== window.location.href) return url;
+    }
+  }
+  return null;
+}
+
+function get4KHDPrevUrl(doc: Document): string | null {
+  const pageBox = doc.querySelector('.page-link-box, .pagination, .nav-links, .nav-previous');
+  if (pageBox) {
+    const current = pageBox.querySelector('.current, .active') || Array.from(pageBox.querySelectorAll('span')).find(s => !s.querySelector('a'));
+    if (current) {
+      const currentPageNum = parseInt(current.textContent || '1', 10);
+      if (!isNaN(currentPageNum) && currentPageNum > 1) {
+        const prevBtn = Array.from(pageBox.querySelectorAll('a')).find(a => parseInt(a.textContent || '0', 10) === currentPageNum - 1);
+        if (prevBtn && prevBtn.href && prevBtn.href !== window.location.href) {
+          return prevBtn.href;
+        }
+      }
+    }
+    const prevBtnFallback = pageBox.querySelector('a.prev') || doc.querySelector('a.prev.page-numbers');
+    if (prevBtnFallback && (prevBtnFallback as HTMLAnchorElement).href) {
+      const url = (prevBtnFallback as HTMLAnchorElement).href;
+      if (url !== window.location.href) return url;
     }
   }
   return null;
@@ -44,10 +75,25 @@ export const FourKHDAdapter: SiteAdapter = {
     // For now we just default to 1, and the store will keep accumulating as we fetch pages.
     const totalPage = 1; 
 
+    const pageBox = doc.querySelector('.page-link-box, .pagination, .nav-links, .nav-previous');
+    let currentPageNum = 1;
+    if (pageBox) {
+      const current = pageBox.querySelector('.current, .active') || Array.from(pageBox.querySelectorAll('span')).find(s => !s.querySelector('a'));
+      if (current) {
+        currentPageNum = parseInt(current.textContent || '1', 10);
+        if (isNaN(currentPageNum)) currentPageNum = 1;
+      }
+    }
+    
+    if (currentPageNum > 1) {
+      const perPage = initLinks.length > 0 ? initLinks.length : 20;
+      store.imageOffset = (currentPageNum - 1) * perPage;
+    }
+
     return {
       links: initLinks,
       nextUrl: get4KHDNextUrl(doc),
-      prevUrl: null, // 4KHD usually goes forward
+      prevUrl: get4KHDPrevUrl(doc),
       totalPage,
     };
   },
@@ -67,11 +113,16 @@ export const FourKHDAdapter: SiteAdapter = {
     return {
       links,
       nextUrl: get4KHDNextUrl(doc),
+      prevUrl: get4KHDPrevUrl(doc),
     };
   },
 
   getContainer() {
-    return document.querySelector('.entry-content, .wp-block-post-content') as HTMLElement | null;
+    const entryContent = document.querySelector('.entry-content, .wp-block-post-content');
+    if (entryContent) return entryContent as HTMLElement;
+    const basicExample = document.querySelector('#basicExample');
+    if (basicExample && basicExample.parentElement) return basicExample.parentElement;
+    return document.querySelector('.post-content') as HTMLElement | null;
   },
 
   hideOriginalElements() {
@@ -82,5 +133,10 @@ export const FourKHDAdapter: SiteAdapter = {
     document.querySelectorAll<HTMLElement>(HIDDEN_SELECTORS.join(',')).forEach(el => {
       el.style.display = 'none';
     });
+  },
+
+  getNativeImages() {
+    const images = Array.from(document.querySelectorAll('figure.wp-block-image img, #basicExample img, .entry-content p img'));
+    return images as HTMLElement[];
   }
 };

@@ -19,9 +19,11 @@ export interface SiteAdapter {
   fetchPage: (url: string) => Promise<{
     links: string[];
     nextUrl: string | null;
+    prevUrl?: string | null;
   }>;
 
   // UI helpers
   getContainer: () => HTMLElement | null; // Used for float control positioning
   hideOriginalElements?: () => void;      // Hide original page elements for scroll mode
+  getNativeImages?: () => HTMLElement[];  // Get original native image elements for positioning
 }
