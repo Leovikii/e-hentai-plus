@@ -16,7 +16,7 @@
 ## 安装
 
 1. 安装 [Tampermonkey](https://www.tampermonkey.net/) 浏览器扩展
-2. 从 [Sleazy Fork](https://sleazyfork.org/zh-CN/scripts/565718-e-hentai-plus) 或 [Github release](https://github.com/Leovikii/e-hentai-plus/releases/latest/download/e-hentai-plus.user.js) 安装脚本
+2. 从 [Sleazy Fork](https://sleazyfork.org/zh-CN/scripts/565718-hentai-reader) 或 [Github release](https://github.com/Leovikii/Hentai-Reader/releases/latest/download/hentai-reader.user.js) 安装脚本
 
 ## 从源码构建
 
@@ -26,7 +26,7 @@ npm run dev    # 开发模式（热重载）
 npm run build  # 生产构建
 ```
 
-输出：`dist/e-hentai-plus.user.js`
+输出：`dist/hentai-reader.user.js`
 
 ## 技术栈
 

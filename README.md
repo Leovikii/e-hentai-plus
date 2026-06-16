@@ -16,7 +16,7 @@ Enhanced reading experience for E-Hentai / ExHentai with infinite scroll, full-s
 ## Installation
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) browser extension
-2. Install the userscript from [Sleazy Fork](https://sleazyfork.org/zh-CN/scripts/565718-e-hentai-plus) or [Github release](https://github.com/Leovikii/e-hentai-plus/releases/latest/download/e-hentai-plus.user.js)
+2. Install the userscript from [Sleazy Fork](https://sleazyfork.org/zh-CN/scripts/565718-hentai-reader) or [Github release](https://github.com/Leovikii/Hentai-Reader/releases/latest/download/hentai-reader.user.js)
 
 ## Build from Source
 
@@ -26,7 +26,7 @@ npm run dev    # Development (hot reload)
 npm run build  # Production
 ```
 
-Output: `dist/e-hentai-plus.user.js`
+Output: `dist/hentai-reader.user.js`
 
 ## Tech Stack
 

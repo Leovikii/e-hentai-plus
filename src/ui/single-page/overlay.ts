@@ -2,7 +2,7 @@ import { store } from '../../state/store';
 import { CFG } from '../../state/config';
 import { qa, isImageReady, fetchPageLinks } from '../../utils/dom';
 import { getNextUrl, getPrevUrl } from '../../services/page-parser';
-import { createScrollbar } from './scrollbar';
+import { createSidebar } from './sidebar';
 import { setupNavigation } from './navigation';
 import { createAutoPlay } from './auto-play';
 import { createStatusHUD } from '../components/status-hud';
@@ -124,7 +124,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     const freshImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
     if (freshImages.length !== store.allImages.length || freshImages.some((img, i) => img !== store.allImages[i])) {
       store.allImages = freshImages;
-      scrollbar.update();
+      sidebar.update();
     }
   }
 
@@ -138,21 +138,23 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
 
     if (!img) {
       showPlaceholder('Waiting for network...');
-      scrollbar.update();
+      sidebar.update();
       startLoadPoll(idx);
       return;
     }
 
     const imgSrc = (img as HTMLImageElement).src;
 
+    const TRANSPARENT_GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
     if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
-      currentImage.removeAttribute('src');
+      currentImage.src = TRANSPARENT_GIF;
       setTimeout(() => {
         currentImage.src = imgSrc;
         currentImage.dataset.assignedSrc = imgSrc;
       }, 0);
     } else if (!imgSrc) {
-      currentImage.removeAttribute('src');
+      currentImage.src = TRANSPARENT_GIF;
       delete currentImage.dataset.assignedSrc;
     }
     
@@ -168,7 +170,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       showPlaceholder('Waiting for network...');
     }
 
-    scrollbar.update();
+    sidebar.update();
 
     if (!isImageReady(img as HTMLImageElement)) {
       startLoadPoll(idx);
@@ -187,7 +189,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       if (img && isImageReady(img as HTMLImageElement)) {
         clearLoadPoll();
         removePlaceholder();
-        scrollbar.update();
+        sidebar.update();
         if (store.autoPlay) autoPlay.start();
       }
     }
@@ -239,13 +241,13 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
         const freshImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
         if (freshImages.length !== store.allImages.length || freshImages.some((img, i) => img !== store.allImages[i])) {
           store.allImages = freshImages;
-          scrollbar.update();
+          sidebar.update();
         }
         const currentImg = store.allImages[idx];
         if (currentImg) {
            const imgSrc = (currentImg as HTMLImageElement).src;
            if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
-             currentImage.removeAttribute('src');
+             currentImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
              setTimeout(() => {
                currentImage.src = imgSrc;
                currentImage.dataset.assignedSrc = imgSrc;
@@ -275,7 +277,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       if (currentImg) {
         const imgSrc = (currentImg as HTMLImageElement).src;
         if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
-           currentImage.removeAttribute('src');
+           currentImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
            setTimeout(() => {
              currentImage.src = imgSrc;
              currentImage.dataset.assignedSrc = imgSrc;
@@ -310,7 +312,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   // Wire up sub-modules (forward declarations resolved via closures)
   const autoPlay = createAutoPlay(() => nav.nextImage());
 
-  const scrollbar = createScrollbar((index) => {
+  const sidebar = createSidebar((index) => {
     store.currentImageIndex = index;
     updateImage();
     autoPlay.reset();
@@ -326,9 +328,13 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     closeSinglePageMode: () => close(),
   });
 
+  overlay.addEventListener('wheel', () => {
+    sidebar.wakeUpProgressBar();
+  }, { passive: true });
+
   // Assemble DOM
   overlay.appendChild(closeBtn);
-  overlay.appendChild(scrollbar.getElement());
+  sidebar.getElements().forEach(el => overlay.appendChild(el));
   overlay.appendChild(statusHUD.getElement());
   overlay.appendChild(imageContainer);
   document.body.appendChild(overlay);
@@ -433,7 +439,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       deps.onLoadNextPage(links, doc);
 
       store.allImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
-      scrollbar.update();
+      sidebar.update();
 
       store.nextUrl = getNextUrl(doc);
       store.isFetching = false;
@@ -457,7 +463,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       store.currentImageIndex += prevCount;
       store.imageOffset -= prevCount;
       store.allImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
-      scrollbar.update();
+      sidebar.update();
 
       store.prevUrl = getPrevUrl(doc);
       store.isFetching = false;
