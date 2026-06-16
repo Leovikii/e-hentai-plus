@@ -8,12 +8,12 @@ export const i18n = {
   backToTop: isZH ? '回到顶部' : 'Back to Top',
 
   // Settings Panel
-  scrollMode: isZH ? '卷轴模式 (往下滚动自动加载)' : 'Scroll Mode (Infinite Scroll)',
+  scrollMode: isZH ? '卷轴模式' : 'Scroll Mode',
   autoEnter: isZH ? '自动进入阅读器' : 'Auto Enter Reader',
-  showControl: isZH ? '显示悬浮控制钮' : 'Show Float Control',
-  readerWidth: isZH ? '阅读器最大宽度 (px, 0=全屏)' : 'Reader Max Width (px, 0=Full)',
-  playSpeed: isZH ? '自动翻页速度 (ms)' : 'Auto Play Speed (ms)',
-  maxPreload: isZH ? '最大预加载图片数' : 'Max Preload Count',
+  showControl: isZH ? '显示悬浮控件' : 'Show Float Control',
+  readerWidth: isZH ? '阅读器最大宽度' : 'Reader Max Width',
+  playSpeed: isZH ? '自动翻页速度' : 'Auto Play Speed',
+  maxPreload: isZH ? '最大预加载数量' : 'Max Preload Count',
   close: isZH ? '关闭' : 'Close',
 
   // Overlay Network Status
