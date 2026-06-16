@@ -2,6 +2,8 @@ import type { SiteAdapter } from '../../types/site-adapter';
 
 declare const unsafeWindow: any;
 
+const idToUrlMap = new Map<string, string>();
+
 export const Comic18Adapter: SiteAdapter = {
   name: '18comic',
 
@@ -26,7 +28,13 @@ export const Comic18Adapter: SiteAdapter = {
         const urlObj = new URL(url, window.location.href);
         if (aid) urlObj.searchParams.set('18aid', aid);
         if (scrambleId) urlObj.searchParams.set('18scid', scrambleId);
-        links.push(urlObj.toString());
+        const viewerUrl = urlObj.toString();
+        (img as HTMLElement).dataset.viewerUrl = viewerUrl;
+        if (img.id) {
+          idToUrlMap.set(img.id, viewerUrl);
+          console.log(`[18comic debug] init mapping id: ${img.id} to viewerUrl: ${viewerUrl}`);
+        }
+        links.push(viewerUrl);
       }
     });
 
@@ -57,7 +65,13 @@ export const Comic18Adapter: SiteAdapter = {
         const urlObj = new URL(imgUrl, window.location.href);
         if (aid) urlObj.searchParams.set('18aid', aid);
         if (scrambleId) urlObj.searchParams.set('18scid', scrambleId);
-        links.push(urlObj.toString());
+        const viewerUrl = urlObj.toString();
+        (img as HTMLElement).dataset.viewerUrl = viewerUrl;
+        if (img.id) {
+          idToUrlMap.set(img.id, viewerUrl);
+          console.log(`[18comic debug] fetchPage mapping id: ${img.id} to viewerUrl: ${viewerUrl}`);
+        }
+        links.push(viewerUrl);
       }
     });
 
@@ -126,7 +140,7 @@ export const Comic18Adapter: SiteAdapter = {
       const cropHeight = Number(imgHeight % num);
       const sHeight = Math.floor(imgHeight / num);
       let sy = imgHeight - cropHeight - sHeight;
-      let dy = cropHeight;
+      let dy = cropHeight + sHeight;
       
       // Draw first piece (includes remainder)
       ctx.drawImage(img, 0, sy, imgWidth, cropHeight + sHeight, 0, 0, imgWidth, cropHeight + sHeight);
@@ -159,9 +173,20 @@ export const Comic18Adapter: SiteAdapter = {
     return document.querySelector('.scramble-page') || document.body;
   },
 
+  getNativeImages: () => {
+    const images = Array.from(document.querySelectorAll('.scramble-page img[id], .owl-item .center img[id], .scramble-page canvas[id], .owl-item .center canvas[id]')) as HTMLElement[];
+    console.log(`[18comic debug] getNativeImages found ${images.length} images`);
+    images.forEach(img => {
+      console.log(`[18comic debug] native element:`, img, 'id:', img.id, 'has map?', idToUrlMap.has(img.id));
+      if (img.id && idToUrlMap.has(img.id)) {
+        img.dataset.viewerUrl = idToUrlMap.get(img.id)!;
+      }
+    });
+    return images;
+  },
+
   hideOriginalElements: () => {
-    const scramble = document.querySelector('.scramble-page') as HTMLElement;
-    if (scramble) scramble.style.display = 'none';
+    // We shouldn't hide .scramble-page since it's the container
   },
 };
 

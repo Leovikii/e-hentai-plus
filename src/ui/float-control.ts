@@ -65,6 +65,8 @@ export function createFloatControl(spmHandle: SinglePageModeHandle): void {
       spmHandle.jumpTo(0);
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+      document.body.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
