@@ -16,6 +16,11 @@ export const i18n = {
   maxPreload: isZH ? '最大预加载数量' : 'Max Preload Count',
   close: isZH ? '关闭' : 'Close',
 
+  // Script Menu
+  toggle: isZH ? '切换: ' : 'Toggle: ',
+  enabled: isZH ? '已开启' : 'Enabled',
+  disabled: isZH ? '已关闭' : 'Disabled',
+
   // Overlay Network Status
   waitingForNetwork: isZH ? '等待网络请求...' : 'Waiting for network...',
   downloading: isZH ? '下载中...' : 'Downloading...',
