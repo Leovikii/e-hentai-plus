@@ -1,4 +1,4 @@
-import type { SiteAdapter } from '../../types/site-adapter';
+import type { SiteAdapter, PageLink } from '../../types/site-adapter';
 import { q, qa } from '../../utils/dom';
 import { requestQueue } from '../../services/request-queue';
 import { CFG } from '../../state/config';
@@ -20,6 +20,27 @@ function getPrevUrl(doc: Document) {
   return prevBtn ? (prevBtn as HTMLAnchorElement).href : null;
 }
 
+function extractLinks(doc: Document): PageLink[] {
+  return Array.from(qa('#gdt a', doc)).map(a => {
+    const url = (a as HTMLAnchorElement).href;
+    let thumb: string | undefined;
+    
+    const divWithBg = a.closest('div[style*="background"]');
+    if (divWithBg) {
+      const style = divWithBg.getAttribute('style') || '';
+      const match = style.match(/url\(['"]?([^)'"]+)['"]?\)/);
+      if (match) thumb = match[1];
+    } else {
+      const img = a.querySelector('img');
+      if (img && img.src && !img.src.endsWith('x.gif')) {
+        thumb = img.src;
+      }
+    }
+    
+    return { url, thumb };
+  });
+}
+
 export const EHentaiAdapter: SiteAdapter = {
   name: 'E-Hentai/ExHentai',
   
@@ -28,7 +49,7 @@ export const EHentaiAdapter: SiteAdapter = {
   },
 
   async init(doc: Document) {
-    const initLinks = Array.from(qa('#gdt a', doc)).map(a => (a as HTMLAnchorElement).href);
+    const initLinks = extractLinks(doc);
     
     // Parse total pages
     let totalPage = 1;
@@ -109,7 +130,7 @@ export const EHentaiAdapter: SiteAdapter = {
     if (!response.ok) throw new Error('Failed to fetch page');
     const html = await response.text();
     const doc = parser.parseFromString(html, 'text/html');
-    const links = Array.from(qa('#gdt a', doc)).map(a => (a as HTMLAnchorElement).href);
+    const links = extractLinks(doc);
     return {
       links,
       nextUrl: getNextUrl(doc),

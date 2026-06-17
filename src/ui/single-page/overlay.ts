@@ -1,4 +1,5 @@
 import { store } from '../../state/store';
+import type { PageLink } from '../../types/site-adapter';
 import { CFG } from '../../state/config';
 import { qa, isImageReady } from '../../utils/dom';
 import { createSidebar } from './sidebar';
@@ -9,8 +10,8 @@ import { i18n } from '../../utils/i18n';
 import type { SinglePageModeHandle } from '../../types';
 
 export interface SinglePageOverlayDeps {
-  onLoadNextPage: (links: string[], nextUrl: string | null, prevUrl?: string | null) => void;
-  onLoadPrevPage: (links: string[], prevUrl: string | null) => void;
+  onLoadNextPage: (links: PageLink[], nextUrl: string | null, prevUrl?: string | null) => void;
+  onLoadPrevPage: (links: PageLink[], prevUrl: string | null) => void;
 }
 
 export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePageModeHandle {
@@ -75,47 +76,11 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
       status: 'error',
       text: i18n.loadFailed,
       pageText: `${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}`,
-      onClick: () => retryCurrentImage()
     });
   }
 
   function removeErrorUI(): void {
     statusHUD.hide();
-  }
-
-  function retryCurrentImage(): void {
-    const idx = store.currentImageIndex;
-    // Re-sync DOM images first
-    syncImages();
-    const img = store.allImages[idx];
-    if (img) {
-      const viewerUrl = img.dataset.viewerUrl;
-      const nlToken = img.dataset.nl;
-      
-      if (viewerUrl) {
-        showPlaceholder(nlToken ? i18n.requestingNewNode : i18n.reloading);
-        
-        const adapter = store.activeAdapter;
-        if (!adapter) return;
-
-        adapter.resolveImage(viewerUrl, nlToken || undefined).then(res => {
-            if (res) {
-              (img as HTMLImageElement).src = res.src;
-              if (res.nl) img.dataset.nl = res.nl;
-              updateImage();
-            } else {
-              showError();
-            }
-          }).catch(() => showError());
-        return;
-      }
-
-      // Fallback for native images
-      const oldSrc = (img as HTMLImageElement).src;
-      img.removeAttribute('src');
-      (img as HTMLImageElement).src = oldSrc;
-    }
-    updateImage();
   }
 
   function syncImages(): void {
@@ -235,13 +200,16 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
     if (mainBox) {
       loadObserver = new MutationObserver(() => {
         if (store.currentImageIndex !== idx) { clearLoadPoll(); return; }
-        const freshImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
-        if (freshImages.length !== store.allImages.length || freshImages.some((img, i) => img !== store.allImages[i])) {
-          store.allImages = freshImages;
-          sidebar.update();
-        }
+        syncImages();
         const currentImg = store.allImages[idx];
         if (currentImg) {
+          if (currentImg.classList.contains('error')) {
+            showError();
+            return;
+          } else if (currentImg.classList.contains('loading')) {
+            showPlaceholder(i18n.requestingNewNode);
+            return;
+          }
            const imgSrc = (currentImg as HTMLImageElement).dataset.realSrc || (currentImg as HTMLImageElement).src;
            applyOverlaySrc(imgSrc, currentImg);
           if (currentImg !== lastKnownImg) {
@@ -261,6 +229,13 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
       if (store.currentImageIndex !== idx) { clearLoadPoll(); return; }
       const currentImg = store.allImages[idx];
       if (currentImg) {
+        if (currentImg.classList.contains('error')) {
+          showError();
+          return;
+        } else if (currentImg.classList.contains('loading')) {
+          showPlaceholder(i18n.requestingNewNode);
+          return;
+        }
         const imgSrc = (currentImg as HTMLImageElement).dataset.realSrc || (currentImg as HTMLImageElement).src;
         applyOverlaySrc(imgSrc, currentImg);
         if (currentImg !== lastKnownImg) {

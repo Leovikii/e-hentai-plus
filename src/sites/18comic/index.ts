@@ -1,4 +1,4 @@
-import type { SiteAdapter } from '../../types/site-adapter';
+import type { SiteAdapter, PageLink } from '../../types/site-adapter';
 
 declare const unsafeWindow: any;
 
@@ -11,14 +11,14 @@ export const Comic18Adapter: SiteAdapter = {
     return url.includes('18comic.vip') || url.includes('18comic.ink');
   },
 
-  init: async (doc: Document): Promise<{ links: string[]; nextUrl: string | null; prevUrl: string | null }> => {
+  init: async (doc: Document): Promise<{ links: PageLink[]; nextUrl: string | null; prevUrl: string | null }> => {
     const aidMatch = doc.documentElement.innerHTML.match(/aid\s*=\s*['"]?(\d+)['"]?/);
     const scrambleMatch = doc.documentElement.innerHTML.match(/scramble_id\s*=\s*['"]?(\d+)['"]?/);
     
     const aid = aidMatch ? aidMatch[1] : (unsafeWindow.aid ? String(unsafeWindow.aid) : '');
     const scrambleId = scrambleMatch ? scrambleMatch[1] : (unsafeWindow.scramble_id ? String(unsafeWindow.scramble_id) : '');
 
-    const links: string[] = [];
+    const links: PageLink[] = [];
     const imgs = doc.querySelectorAll('.scramble-page img[id], .owl-item .center img[id]');
     
     imgs.forEach((img: Element) => {
@@ -32,9 +32,8 @@ export const Comic18Adapter: SiteAdapter = {
         (img as HTMLElement).dataset.viewerUrl = viewerUrl;
         if (img.id) {
           idToUrlMap.set(img.id, viewerUrl);
-          console.log(`[18comic debug] init mapping id: ${img.id} to viewerUrl: ${viewerUrl}`);
         }
-        links.push(viewerUrl);
+        links.push({ url: viewerUrl });
       }
     });
 
@@ -45,7 +44,7 @@ export const Comic18Adapter: SiteAdapter = {
     };
   },
 
-  fetchPage: async (url: string): Promise<{ links: string[]; nextUrl: string | null; prevUrl: string | null }> => {
+  fetchPage: async (url: string): Promise<{ links: PageLink[]; nextUrl: string | null; prevUrl: string | null }> => {
     const res = await fetch(url);
     const html = await res.text();
     const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -56,7 +55,7 @@ export const Comic18Adapter: SiteAdapter = {
     const aid = aidMatch ? aidMatch[1] : '';
     const scrambleId = scrambleMatch ? scrambleMatch[1] : '';
 
-    const links: string[] = [];
+    const links: PageLink[] = [];
     const imgs = doc.querySelectorAll('.scramble-page img[id], .owl-item .center img[id]');
     
     imgs.forEach((img: Element) => {
@@ -69,9 +68,8 @@ export const Comic18Adapter: SiteAdapter = {
         (img as HTMLElement).dataset.viewerUrl = viewerUrl;
         if (img.id) {
           idToUrlMap.set(img.id, viewerUrl);
-          console.log(`[18comic debug] fetchPage mapping id: ${img.id} to viewerUrl: ${viewerUrl}`);
         }
-        links.push(viewerUrl);
+        links.push({ url: viewerUrl });
       }
     });
 
@@ -119,7 +117,6 @@ export const Comic18Adapter: SiteAdapter = {
       const imgHeight = img.naturalHeight;
 
       if (!unsafeWindow.get_num) {
-        console.warn('[18comic] get_num function not found on unsafeWindow');
         URL.revokeObjectURL(blobUrl);
         return { src: realUrl };
       }
@@ -160,7 +157,6 @@ export const Comic18Adapter: SiteAdapter = {
       return { src: finalUrl };
 
     } catch (err) {
-      console.error('[18comic] resolveImage error:', err);
       // Fallback to original url
       const cleanUrl = new URL(urlStr);
       cleanUrl.searchParams.delete('18aid');
@@ -175,9 +171,7 @@ export const Comic18Adapter: SiteAdapter = {
 
   getNativeImages: () => {
     const images = Array.from(document.querySelectorAll('.scramble-page img[id], .owl-item .center img[id], .scramble-page canvas[id], .owl-item .center canvas[id]')) as HTMLElement[];
-    console.log(`[18comic debug] getNativeImages found ${images.length} images`);
     images.forEach(img => {
-      console.log(`[18comic debug] native element:`, img, 'id:', img.id, 'has map?', idToUrlMap.has(img.id));
       if (img.id && idToUrlMap.has(img.id)) {
         img.dataset.viewerUrl = idToUrlMap.get(img.id)!;
       }

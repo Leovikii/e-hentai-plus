@@ -1,6 +1,5 @@
 import { store } from '../state/store';
 import { CFG } from '../state/config';
-import { fetchPageLinks } from '../utils/dom';
 import { loadImageWithRetry } from './image-loader';
 
 const prefetchedUrls = new Set<string>();
@@ -17,20 +16,22 @@ export function prefetchNextPage(): void {
     store.nextPagePrefetched = true;
     prefetchedUrls.add(store.nextUrl);
 
-    fetchPageLinks(store.nextUrl).then(({ links }) => {
-      links.forEach(url => {
-        loadImageWithRetry(url).then(res => {
-          if (res) {
-            const preloadImg = new Image();
-            preloadImg.src = res.src;
-          }
-        }).catch(() => null);
+    if (store.activeAdapter) {
+      store.activeAdapter.fetchPage(store.nextUrl).then(({ links }) => {
+        links.forEach(link => {
+          loadImageWithRetry(link.url).then(res => {
+            if (res) {
+              const preloadImg = new Image();
+              preloadImg.src = res.src;
+            }
+          }).catch(() => null);
+        });
+      }).catch(err => {
+        console.error('[Prefetch Failed]', err);
+        store.nextPagePrefetched = false;
+        if (store.nextUrl) prefetchedUrls.delete(store.nextUrl);
       });
-    }).catch(err => {
-      console.error('[Prefetch Failed]', err);
-      store.nextPagePrefetched = false;
-      if (store.nextUrl) prefetchedUrls.delete(store.nextUrl);
-    });
+    }
   }
 }
 

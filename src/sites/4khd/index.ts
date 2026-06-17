@@ -1,19 +1,20 @@
-import type { SiteAdapter } from '../../types/site-adapter';
+import type { SiteAdapter, PageLink } from '../../types/site-adapter';
 import { qa } from '../../utils/dom';
 import { store } from '../../state/store';
 
 const parser = new DOMParser();
 
-function extract4KHDImages(doc: Document): string[] {
+function extract4KHDImages(doc: Document): PageLink[] {
   const images = Array.from(qa('figure.wp-block-image img, #basicExample img, .entry-content p img', doc));
   return images.map(img => {
     let src = (img as HTMLImageElement).src;
+    let thumb = src;
     src = src.replace(/i\d\.wp\.com\//, '');
     src = src.replace('pic.4khd.com', 'img.4khd.com');
     src = src.replace(/\?.+$/, '');
     src = src.replace(/\/w\d+-rw\//, '/w2500-h2500-rw/');
-    return src;
-  }).filter(src => src && !src.includes('avatar')); // filter out possible junk
+    return { url: src, thumb };
+  }).filter(link => link.url && !link.url.includes('avatar')); // filter out possible junk
 }
 
 function get4KHDNextUrl(doc: Document): string | null {

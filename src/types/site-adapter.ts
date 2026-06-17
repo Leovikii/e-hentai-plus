@@ -1,3 +1,8 @@
+export interface PageLink {
+  url: string;
+  thumb?: string;
+}
+
 export interface SiteAdapter {
   name: string;
   
@@ -6,7 +11,7 @@ export interface SiteAdapter {
 
   // Initialize and get the initial page data
   init: (doc: Document) => Promise<{
-    links: string[];         // Image viewer URLs or direct image URLs
+    links: PageLink[];         // Image viewer URLs and thumbnails
     nextUrl: string | null;
     prevUrl: string | null;
     totalPage?: number;
@@ -17,7 +22,7 @@ export interface SiteAdapter {
 
   // Fetch the next page and get its links
   fetchPage: (url: string) => Promise<{
-    links: string[];
+    links: PageLink[];
     nextUrl: string | null;
     prevUrl?: string | null;
   }>;

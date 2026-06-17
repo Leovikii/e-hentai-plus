@@ -145,19 +145,32 @@ export function createSidebar(
 
     const img = store.allImages[index];
     if (img && (img as HTMLImageElement).src) {
-      let thumbImg = el.querySelector('img') as HTMLImageElement | null;
-      if (!thumbImg) {
+      let thumbCanvas = el.querySelector('canvas.sp-thumb-img') as HTMLCanvasElement | null;
+      if (!thumbCanvas) {
         el.innerHTML = '';
-        thumbImg = document.createElement('img');
-        thumbImg.className = 'sp-thumb-img';
-        el.appendChild(thumbImg);
+        thumbCanvas = document.createElement('canvas');
+        thumbCanvas.className = 'sp-thumb-img';
+        el.appendChild(thumbCanvas);
         const label = document.createElement('span');
         label.className = 'sp-thumb-label';
         el.appendChild(label);
       }
-      const realSrc = (img as HTMLImageElement).dataset.realSrc || (img as HTMLImageElement).src;
-      if (thumbImg.src !== realSrc) {
-        thumbImg.src = realSrc;
+      const realSrc = (img as HTMLImageElement).dataset.thumbSrc || (img as HTMLImageElement).dataset.realSrc || (img as HTMLImageElement).src;
+      if (thumbCanvas.dataset.src !== realSrc) {
+        thumbCanvas.dataset.src = realSrc;
+        
+        const tempImg = new Image();
+        tempImg.onload = () => {
+          if (thumbCanvas!.dataset.src === realSrc) {
+            thumbCanvas!.width = tempImg.naturalWidth;
+            thumbCanvas!.height = tempImg.naturalHeight;
+            const ctx = thumbCanvas!.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(tempImg, 0, 0);
+            }
+          }
+        };
+        tempImg.src = realSrc;
       }
       const label = el.querySelector('.sp-thumb-label') as HTMLElement;
       if (label) label.textContent = String(store.imageOffset + index + 1);
