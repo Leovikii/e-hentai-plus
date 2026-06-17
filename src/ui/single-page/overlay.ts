@@ -1,19 +1,21 @@
 import { store } from '../../state/store';
+import type { PageLink } from '../../types/site-adapter';
 import { CFG } from '../../state/config';
-import { qa, isImageReady, fetchPageLinks } from '../../utils/dom';
-import { getNextUrl, getPrevUrl } from '../../services/page-parser';
-import { createScrollbar } from './scrollbar';
+import { qa, isImageReady } from '../../utils/dom';
+import { loadPlaceholderImage } from '../../features/scroll-mode';
+import { createSidebar } from './sidebar';
 import { setupNavigation } from './navigation';
 import { createAutoPlay } from './auto-play';
 import { createStatusHUD } from '../components/status-hud';
+import { i18n } from '../../utils/i18n';
 import type { SinglePageModeHandle } from '../../types';
 
-export interface OverlayDeps {
-  onLoadNextPage: (links: string[], doc: Document) => void;
-  onLoadPrevPage: (links: string[], doc: Document) => void;
+export interface SinglePageOverlayDeps {
+  onLoadNextPage: (links: PageLink[], nextUrl: string | null, prevUrl?: string | null) => void;
+  onLoadPrevPage: (links: PageLink[], prevUrl: string | null) => void;
 }
 
-export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle {
+export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePageModeHandle {
   const overlay = document.createElement('div');
   overlay.className = 'single-page-overlay';
 
@@ -73,9 +75,8 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     currentImage.style.display = 'none';
     statusHUD.show({
       status: 'error',
-      text: 'Load Failed. Click to Retry',
+      text: i18n.loadFailed,
       pageText: `${store.imageOffset + store.currentImageIndex + 1} / ${store.imageOffset + store.allImages.length}`,
-      onClick: () => retryCurrentImage()
     });
   }
 
@@ -83,48 +84,29 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     statusHUD.hide();
   }
 
-  function retryCurrentImage(): void {
-    const idx = store.currentImageIndex;
-    // Re-sync DOM images first
-    syncImages();
-    const img = store.allImages[idx];
-    if (img) {
-      const viewerUrl = img.dataset.viewerUrl;
-      const nlToken = img.dataset.nl;
-      
-      if (viewerUrl) {
-        showPlaceholder(nlToken ? 'Requesting New Node...' : 'Reloading...');
-        
-        import('../../services/image-loader').then(({ loadImageWithRetry, clearCachedImage }) => {
-          clearCachedImage(viewerUrl);
-          const fetchUrl = nlToken ? `${viewerUrl}${viewerUrl.includes('?') ? '&' : '?'}nl=${nlToken}` : undefined;
-          
-          loadImageWithRetry(viewerUrl, fetchUrl).then(res => {
-            if (res) {
-              (img as HTMLImageElement).src = res.src;
-              if (res.nl) img.dataset.nl = res.nl;
-              updateImage();
-            } else {
-              showError();
-            }
-          }).catch(() => showError());
-        });
-        return;
-      }
-
-      // Fallback for native images
-      const oldSrc = (img as HTMLImageElement).src;
-      img.removeAttribute('src');
-      (img as HTMLImageElement).src = oldSrc;
-    }
-    updateImage();
-  }
-
   function syncImages(): void {
     const freshImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
     if (freshImages.length !== store.allImages.length || freshImages.some((img, i) => img !== store.allImages[i])) {
       store.allImages = freshImages;
-      scrollbar.update();
+      sidebar.update();
+    }
+  }
+
+  function applyOverlaySrc(imgSrc: string, currentImg: HTMLElement): void {
+    if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
+      currentImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+      setTimeout(() => {
+        currentImage.src = imgSrc;
+        currentImage.dataset.assignedSrc = imgSrc;
+        if (!isImageReady(currentImg as HTMLImageElement)) {
+          showPlaceholder(i18n.downloading);
+        } else {
+          removePlaceholder();
+        }
+      }, 0);
+    } else if (!imgSrc && currentImage.dataset.assignedSrc) {
+      currentImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+      delete currentImage.dataset.assignedSrc;
     }
   }
 
@@ -137,38 +119,32 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     const img = store.allImages[idx];
 
     if (!img) {
-      showPlaceholder('Waiting for network...');
-      scrollbar.update();
+      showPlaceholder(i18n.waitingForNetwork);
+      sidebar.update();
       startLoadPoll(idx);
       return;
     }
 
-    const imgSrc = (img as HTMLImageElement).src;
-
-    if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
-      currentImage.removeAttribute('src');
-      setTimeout(() => {
-        currentImage.src = imgSrc;
-        currentImage.dataset.assignedSrc = imgSrc;
-      }, 0);
-    } else if (!imgSrc) {
-      currentImage.removeAttribute('src');
-      delete currentImage.dataset.assignedSrc;
+    if (img.classList.contains('r-ph') && !img.dataset.lazyLoaded) {
+      img.dataset.lazyLoaded = 'true';
+      loadPlaceholderImage(img as HTMLElement);
     }
-    
+
+    const nextImg = store.allImages[idx + 1];
+    if (nextImg && nextImg.classList.contains('r-ph') && !nextImg.dataset.lazyLoaded) {
+      nextImg.dataset.lazyLoaded = 'true';
+      loadPlaceholderImage(nextImg as HTMLElement);
+    }
+
+    const imgSrc = (img as HTMLImageElement).dataset.realSrc || (img as HTMLImageElement).src;
+    applyOverlaySrc(imgSrc, img);
     currentImage.style.display = 'block';
 
-    if (imgSrc) {
-      if (!isImageReady(img as HTMLImageElement)) {
-        showPlaceholder('Downloading...');
-      } else {
-        removePlaceholder();
-      }
-    } else {
-      showPlaceholder('Waiting for network...');
+    if (!imgSrc) {
+      showPlaceholder(i18n.waitingForNetwork);
     }
 
-    scrollbar.update();
+    sidebar.update();
 
     if (!isImageReady(img as HTMLImageElement)) {
       startLoadPoll(idx);
@@ -187,7 +163,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       if (img && isImageReady(img as HTMLImageElement)) {
         clearLoadPoll();
         removePlaceholder();
-        scrollbar.update();
+        sidebar.update();
         if (store.autoPlay) autoPlay.start();
       }
     }
@@ -236,26 +212,18 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     if (mainBox) {
       loadObserver = new MutationObserver(() => {
         if (store.currentImageIndex !== idx) { clearLoadPoll(); return; }
-        const freshImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
-        if (freshImages.length !== store.allImages.length || freshImages.some((img, i) => img !== store.allImages[i])) {
-          store.allImages = freshImages;
-          scrollbar.update();
-        }
+        syncImages();
         const currentImg = store.allImages[idx];
         if (currentImg) {
-           const imgSrc = (currentImg as HTMLImageElement).src;
-           if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
-             currentImage.removeAttribute('src');
-             setTimeout(() => {
-               currentImage.src = imgSrc;
-               currentImage.dataset.assignedSrc = imgSrc;
-               if (!isImageReady(currentImg as HTMLImageElement)) {
-                 showPlaceholder('Downloading...');
-               } else {
-                 removePlaceholder();
-               }
-             }, 0);
+          if (currentImg.classList.contains('error')) {
+            showError();
+            return;
+          } else if (currentImg.classList.contains('loading')) {
+            showPlaceholder(i18n.downloading);
+            return;
           }
+           const imgSrc = (currentImg as HTMLImageElement).dataset.realSrc || (currentImg as HTMLImageElement).src;
+           applyOverlaySrc(imgSrc, currentImg);
           if (currentImg !== lastKnownImg) {
             lastKnownImg = currentImg;
             if (currentImg.tagName === 'IMG') {
@@ -273,19 +241,15 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
       if (store.currentImageIndex !== idx) { clearLoadPoll(); return; }
       const currentImg = store.allImages[idx];
       if (currentImg) {
-        const imgSrc = (currentImg as HTMLImageElement).src;
-        if (imgSrc && currentImage.dataset.assignedSrc !== imgSrc) {
-           currentImage.removeAttribute('src');
-           setTimeout(() => {
-             currentImage.src = imgSrc;
-             currentImage.dataset.assignedSrc = imgSrc;
-             if (!isImageReady(currentImg as HTMLImageElement)) {
-               showPlaceholder('Downloading...');
-             } else {
-               removePlaceholder();
-             }
-           }, 0);
+        if (currentImg.classList.contains('error')) {
+          showError();
+          return;
+        } else if (currentImg.classList.contains('loading')) {
+          showPlaceholder(i18n.downloading);
+          return;
         }
+        const imgSrc = (currentImg as HTMLImageElement).dataset.realSrc || (currentImg as HTMLImageElement).src;
+        applyOverlaySrc(imgSrc, currentImg);
         if (currentImg !== lastKnownImg) {
           lastKnownImg = currentImg;
           if (currentImg.tagName === 'IMG') {
@@ -310,7 +274,7 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   // Wire up sub-modules (forward declarations resolved via closures)
   const autoPlay = createAutoPlay(() => nav.nextImage());
 
-  const scrollbar = createScrollbar((index) => {
+  const sidebar = createSidebar((index) => {
     store.currentImageIndex = index;
     updateImage();
     autoPlay.reset();
@@ -326,9 +290,13 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     closeSinglePageMode: () => close(),
   });
 
+  overlay.addEventListener('wheel', () => {
+    sidebar.wakeUpProgressBar();
+  }, { passive: true });
+
   // Assemble DOM
   overlay.appendChild(closeBtn);
-  overlay.appendChild(scrollbar.getElement());
+  sidebar.getElements().forEach(el => overlay.appendChild(el));
   overlay.appendChild(statusHUD.getElement());
   overlay.appendChild(imageContainer);
   document.body.appendChild(overlay);
@@ -338,33 +306,83 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   function open(): void {
     store.allImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
     if (store.allImages.length === 0) {
-      alert('Please wait for images to load');
+      alert(i18n.waitImagesToLoad);
       return;
     }
 
     let startIndex = 0;
 
     if (store.settings.scrollMode) {
-      const viewportCenter = window.scrollY + window.innerHeight / 2;
-      const searchRange = window.innerHeight * 2;
       let minDistance = Infinity;
 
       store.allImages.forEach((img, index) => {
         const rect = img.getBoundingClientRect();
-        const imgTop = rect.top + window.scrollY;
-
-        if (Math.abs(imgTop - viewportCenter) < searchRange) {
-          const imgCenter = imgTop + rect.height / 2;
-          const distance = Math.abs(imgCenter - viewportCenter);
-          if (distance < minDistance) {
-            minDistance = distance;
+        const viewportCenter = window.innerHeight / 2;
+        
+        if (rect.top <= viewportCenter && rect.bottom >= viewportCenter) {
+          startIndex = index;
+          minDistance = -1;
+        } else if (minDistance !== -1) {
+          const distanceToCenter = rect.bottom < viewportCenter 
+            ? viewportCenter - rect.bottom 
+            : rect.top - viewportCenter;
+            
+          if (distanceToCenter < minDistance) {
+            minDistance = distanceToCenter;
             startIndex = index;
           }
         }
       });
     } else {
-      // Non-scroll mode: start at first image of current page (index 0 in allImages)
-      startIndex = 0;
+      // Non-scroll mode: try to find the native image closest to viewport center
+      const adapter = store.activeAdapter;
+      let nativeImages: HTMLElement[] = [];
+      
+      if (adapter?.getNativeImages) {
+        nativeImages = adapter.getNativeImages();
+      } else {
+        const container = adapter?.getContainer();
+        if (container) {
+          nativeImages = Array.from(container.querySelectorAll('img')).filter(img => img.clientWidth > 50 || img.clientHeight > 50);
+        }
+      }
+
+      if (nativeImages.length > 0) {
+        let minDistance = Infinity;
+        let bestNativeImg: HTMLElement | null = null;
+        nativeImages.forEach((img) => {
+          const rect = img.getBoundingClientRect();
+          if (rect.width === 0 || rect.height === 0) return;
+          
+          const viewportCenter = window.innerHeight / 2;
+          if (rect.top <= viewportCenter && rect.bottom >= viewportCenter) {
+            bestNativeImg = img;
+            minDistance = -1;
+          } else if (minDistance !== -1) {
+            const distanceToCenter = rect.bottom < viewportCenter 
+              ? viewportCenter - rect.bottom 
+              : rect.top - viewportCenter;
+              
+            if (distanceToCenter < minDistance) {
+              minDistance = distanceToCenter;
+              bestNativeImg = img;
+            }
+          }
+        });
+        
+        if (bestNativeImg) {
+          const currentSrc = (bestNativeImg as HTMLImageElement).dataset?.viewerUrl || (bestNativeImg as HTMLImageElement).dataset?.src || (bestNativeImg as HTMLImageElement).src;
+          const foundIdx = store.allImages.findIndex(i => {
+            const iSrc = (i as HTMLImageElement).dataset?.viewerUrl || (i as HTMLImageElement).dataset?.realSrc || (i as HTMLImageElement).dataset?.src || (i as HTMLImageElement).src;
+            return iSrc === currentSrc;
+          });
+          if (foundIdx !== -1) {
+            startIndex = foundIdx;
+          }
+        }
+      } else {
+        startIndex = 0;
+      }
     }
 
     store.currentImageIndex = startIndex;
@@ -398,14 +416,64 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
         }
       }
     } else {
-      // Navigate to the page containing the current image
-      const globalIndex = store.imageOffset + store.currentImageIndex;
-      const targetPage = Math.floor(globalIndex / store.perPage);
-      const url = new URL(window.location.href);
-      const currentPage = parseInt(url.searchParams.get('p') || '0');
-      if (targetPage !== currentPage) {
-        url.searchParams.set('p', String(targetPage));
-        window.location.href = url.toString();
+      const adapter = store.activeAdapter;
+      let nativeImages: HTMLElement[] = [];
+      if (adapter?.getNativeImages) {
+        nativeImages = adapter.getNativeImages();
+      } else {
+        const container = adapter?.getContainer();
+        if (container) {
+          nativeImages = Array.from(container.querySelectorAll('img')).filter(img => img.clientWidth > 50 || img.clientHeight > 50);
+        }
+      }
+
+      const targetImgFallback = store.allImages[store.currentImageIndex];
+      const batchDiv = targetImgFallback?.closest('.page-batch') as HTMLElement | null;
+
+      if (batchDiv && batchDiv.dataset.pageUrl) {
+        const targetUrl = new URL(batchDiv.dataset.pageUrl, window.location.href);
+        const currentUrl = new URL(window.location.href);
+        // If the image belongs to a different page, navigate to it!
+        if (targetUrl.pathname !== currentUrl.pathname || targetUrl.search !== currentUrl.search) {
+          window.location.href = targetUrl.toString();
+          return;
+        }
+      }
+
+      // If we are still on the same page, we can attempt to scroll to the native image
+      if (store.currentImageIndex >= 0 && nativeImages.length > 0) {
+        // Find which index this image represents IN THE NATIVE PAGE
+        // We can do this by finding the img in nativeImages that has the same src
+        const currentSrc = (targetImgFallback as HTMLImageElement)?.dataset?.viewerUrl || (targetImgFallback as HTMLImageElement)?.dataset?.realSrc || (targetImgFallback as HTMLImageElement)?.src;
+        if (currentSrc) {
+          const targetNativeImg = nativeImages.find(img => {
+            const nativeSrc = (img as HTMLImageElement).dataset?.viewerUrl || (img as HTMLImageElement).dataset?.src || (img as HTMLImageElement).src;
+            return nativeSrc === currentSrc;
+          });
+
+          if (targetNativeImg) {
+            setTimeout(() => {
+              targetNativeImg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+            return;
+          }
+        }
+      }
+
+
+
+      // Fallback for sites that use ?p= parameter for pagination
+      if (adapter?.name === 'E-Hentai' || adapter?.name === 'ExHentai') {
+        const globalIndex = store.imageOffset + store.currentImageIndex;
+        if (globalIndex >= 0) {
+          const targetPage = Math.floor(globalIndex / store.perPage);
+          const url = new URL(window.location.href);
+          const currentPage = parseInt(url.searchParams.get('p') || '0');
+          if (targetPage !== currentPage) {
+            url.searchParams.set('p', String(targetPage));
+            window.location.href = url.toString();
+          }
+        }
       }
     }
   }
@@ -427,17 +495,11 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
     if (!store.nextUrl || store.isFetching) return;
 
     store.isFetching = true;
-
-    fetchPageLinks(store.nextUrl).then(({ doc, links }) => {
-
-      deps.onLoadNextPage(links, doc);
-
-      store.allImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
-      scrollbar.update();
-
-      store.nextUrl = getNextUrl(doc);
+    store.activeAdapter!.fetchPage(store.nextUrl).then(({ links, nextUrl, prevUrl }) => {
+      deps.onLoadNextPage(links, nextUrl, prevUrl);
+      syncImages();
       store.isFetching = false;
-      store.nextPagePrefetched = false;
+      checkAndLoadNextPage();
     }).catch((err) => {
       console.error('[Single Page] Load failed', err);
       store.isFetching = false;
@@ -445,21 +507,26 @@ export function createSinglePageOverlay(deps: OverlayDeps): SinglePageModeHandle
   }
 
   function loadPrevPage(): void {
-    if (!store.prevUrl || store.isFetching || store.imageOffset <= 0) return;
+    if (!store.prevUrl || store.isFetching) return;
 
     store.isFetching = true;
 
-    fetchPageLinks(store.prevUrl).then(({ doc, links }) => {
+    store.activeAdapter!.fetchPage(store.prevUrl).then(({ links, prevUrl }) => {
       const prevCount = links.length;
 
-      deps.onLoadPrevPage(links, doc);
+      deps.onLoadPrevPage(links, prevUrl ?? null);
 
       store.currentImageIndex += prevCount;
-      store.imageOffset -= prevCount;
-      store.allImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
-      scrollbar.update();
+      store.imageOffset = Math.max(0, store.imageOffset - prevCount);
+      
+      if (prevCount > 0 && store.currentImageIndex === prevCount) {
+        store.currentImageIndex--; // Auto-advance to the newly loaded previous image
+      }
 
-      store.prevUrl = getPrevUrl(doc);
+      store.allImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
+      sidebar.update();
+      updateImage();
+
       store.isFetching = false;
     }).catch((err) => {
       console.error('[Single Page] Load prev failed', err);

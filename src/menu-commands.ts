@@ -1,28 +1,25 @@
 import { GM_registerMenuCommand } from '$';
 import { store } from './state/store';
+import { i18n } from './utils/i18n';
 
 export function registerMenuCommands(): void {
-  GM_registerMenuCommand('Toggle Scroll Mode', () => {
-    store.updateSetting('scrollMode', !store.settings.scrollMode);
-    alert(`Scroll Mode ${store.settings.scrollMode ? 'Enabled' : 'Disabled'}`);
-    location.reload();
-  });
+  if (!store.activeAdapter || !['18comic', '4KHD'].includes(store.activeAdapter.name)) {
+    GM_registerMenuCommand(`${i18n.toggle}${i18n.scrollMode}`, () => {
+      store.updateSetting('scrollMode', !store.settings.scrollMode);
+      alert(`${i18n.scrollMode} ${store.settings.scrollMode ? i18n.enabled : i18n.disabled}`);
+      location.reload();
+    });
+  }
 
-  GM_registerMenuCommand('Toggle Auto Scroll', () => {
-    store.updateSetting('autoScroll', !store.settings.autoScroll);
-    alert(`Auto Scroll ${store.settings.autoScroll ? 'Enabled' : 'Disabled'}`);
-    location.reload();
-  });
-
-  GM_registerMenuCommand('Toggle Control Display', () => {
+  GM_registerMenuCommand(`${i18n.toggle}${i18n.showControl}`, () => {
     store.updateSetting('showControl', !store.settings.showControl);
-    alert(`Control Display ${store.settings.showControl ? 'Enabled' : 'Disabled'}`);
+    alert(`${i18n.showControl} ${store.settings.showControl ? i18n.enabled : i18n.disabled}`);
     location.reload();
   });
 
-  GM_registerMenuCommand('Toggle Auto Enter Single Page', () => {
+  GM_registerMenuCommand(`${i18n.toggle}${i18n.autoEnter}`, () => {
     store.updateSetting('autoEnterSinglePage', !store.settings.autoEnterSinglePage);
-    alert(`Auto Enter Single Page ${store.settings.autoEnterSinglePage ? 'Enabled' : 'Disabled'}`);
+    alert(`${i18n.autoEnter} ${store.settings.autoEnterSinglePage ? i18n.enabled : i18n.disabled}`);
     location.reload();
   });
 }

@@ -1,6 +1,7 @@
 import { store } from '../state/store';
 import { svgReader, svgPlay, svgPause, svgSettings, svgTop } from '../utils/icons';
 import { createSettingsPanel } from './settings-panel';
+import { i18n } from '../utils/i18n';
 import type { SinglePageModeHandle } from '../types';
 
 export function createFloatControl(spmHandle: SinglePageModeHandle): void {
@@ -11,7 +12,7 @@ export function createFloatControl(spmHandle: SinglePageModeHandle): void {
   const autoPlayBtn = document.createElement('div');
   autoPlayBtn.className = `side-btn auto-play-btn hidden${store.autoPlay ? ' active' : ''}`;
   autoPlayBtn.innerHTML = store.autoPlay ? svgPause : svgPlay;
-  autoPlayBtn.title = 'Auto Play';
+  autoPlayBtn.title = i18n.autoPlay;
   autoPlayBtn.onclick = (e) => {
     e.stopPropagation();
     const newValue = !store.autoPlay;
@@ -25,7 +26,7 @@ export function createFloatControl(spmHandle: SinglePageModeHandle): void {
   const circleControl = document.createElement('div');
   circleControl.className = 'circle-control';
   circleControl.innerHTML = svgReader;
-  circleControl.title = 'Reader Mode';
+  circleControl.title = i18n.readerMode;
   circleControl.onclick = (e) => {
     if (e.target !== circleControl && !circleControl.querySelector('svg')?.contains(e.target as Node)) return;
     if (spmHandle.isActive()) {
@@ -51,19 +52,21 @@ export function createFloatControl(spmHandle: SinglePageModeHandle): void {
   const settingsBtn = settings.getButtonElement();
   settingsBtn.className = 'side-btn';
   settingsBtn.innerHTML = svgSettings;
-  settingsBtn.title = 'Settings';
+  settingsBtn.title = i18n.settings;
 
   // Back to top button (above the control bar)
   const topBtn = document.createElement('div');
   topBtn.className = 'side-btn top-btn';
   topBtn.innerHTML = svgTop;
-  topBtn.title = 'Back to Top';
+  topBtn.title = i18n.backToTop;
   topBtn.onclick = (e) => {
     e.stopPropagation();
     if (spmHandle.isActive()) {
       spmHandle.jumpTo(0);
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+      document.body.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 

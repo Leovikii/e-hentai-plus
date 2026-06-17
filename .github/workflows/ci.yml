@@ -56,9 +56,9 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.VERSION }}
-          name: e-hentai-plus ${{ env.VERSION }}
+          name: Hentai-Reader ${{ env.VERSION }}
           body: |
             ### Changes
             ${{ env.CHANGELOG }}
-          files: dist/e-hentai-plus.user.js
+          files: dist/hentai-reader.user.js
           make_latest: true

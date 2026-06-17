@@ -1,4 +1,5 @@
 import { store } from '../state/store';
+import { i18n } from '../utils/i18n';
 
 export interface SettingsPanelHandle {
   getButtonElement: () => HTMLElement;
@@ -7,14 +8,13 @@ export interface SettingsPanelHandle {
 
 interface SettingItem {
   label: string;
-  key: keyof Pick<typeof store.settings, 'scrollMode' | 'showControl' | 'autoScroll' | 'autoEnterSinglePage'>;
+  key: keyof Pick<typeof store.settings, 'scrollMode' | 'showControl' | 'autoEnterSinglePage'>;
 }
 
 const SETTINGS: SettingItem[] = [
-  { label: 'Scroll Mode', key: 'scrollMode' },
-  { label: 'Show Control', key: 'showControl' },
-  { label: 'Auto Scroll', key: 'autoScroll' },
-  { label: 'Auto Enter Reader', key: 'autoEnterSinglePage' },
+  { label: i18n.scrollMode, key: 'scrollMode' },
+  { label: i18n.showControl, key: 'showControl' },
+  { label: i18n.autoEnter, key: 'autoEnterSinglePage' },
 ];
 
 export function createSettingsPanel(): SettingsPanelHandle {
@@ -25,6 +25,9 @@ export function createSettingsPanel(): SettingsPanelHandle {
   settingsPanel.className = 'settings-panel';
 
   SETTINGS.forEach(({ label, key }) => {
+    if (key === 'scrollMode' && store.activeAdapter && ['18comic', '4KHD'].includes(store.activeAdapter.name)) {
+      return;
+    }
     const item = document.createElement('div');
     item.className = 'settings-item';
 
@@ -43,6 +46,9 @@ export function createSettingsPanel(): SettingsPanelHandle {
       const newValue = !store.settings[key];
       store.updateSetting(key, newValue);
       toggle.classList.toggle('on', newValue);
+      if (key === 'scrollMode') {
+        window.location.reload();
+      }
     };
 
     item.appendChild(labelEl);
@@ -56,7 +62,7 @@ export function createSettingsPanel(): SettingsPanelHandle {
 
   const intervalLabel = document.createElement('span');
   intervalLabel.className = 'settings-label';
-  intervalLabel.textContent = 'Play Interval';
+  intervalLabel.textContent = i18n.playSpeed;
 
   const intervalRight = document.createElement('div');
   intervalRight.style.cssText = 'display:flex;align-items:center;gap:4px;';
