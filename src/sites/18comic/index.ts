@@ -4,6 +4,31 @@ declare const unsafeWindow: any;
 
 const idToUrlMap = new Map<string, string>();
 
+class Mutex {
+  private queue: (() => void)[] = [];
+  private activeCount = 0;
+  constructor(private maxConcurrent: number) {}
+
+  async lock(): Promise<void> {
+    if (this.activeCount < this.maxConcurrent) {
+      this.activeCount++;
+      return;
+    }
+    return new Promise(resolve => this.queue.push(resolve));
+  }
+
+  unlock(): void {
+    if (this.queue.length > 0) {
+      const next = this.queue.shift();
+      next?.();
+    } else {
+      this.activeCount--;
+    }
+  }
+}
+
+const decodeMutex = new Mutex(1);
+
 export const Comic18Adapter: SiteAdapter = {
   name: '18comic',
 
@@ -28,12 +53,23 @@ export const Comic18Adapter: SiteAdapter = {
         const urlObj = new URL(url, window.location.href);
         if (aid) urlObj.searchParams.set('18aid', aid);
         if (scrambleId) urlObj.searchParams.set('18scid', scrambleId);
+        
         const viewerUrl = urlObj.toString();
         (img as HTMLElement).dataset.viewerUrl = viewerUrl;
+        
         if (img.id) {
+          // Save original id for tracking but remove it so native script fails to bind to it
+          (img as HTMLElement).dataset.originalId = img.id;
           idToUrlMap.set(img.id, viewerUrl);
         }
+        
         links.push({ url: viewerUrl });
+
+        // Strip attributes to blind the native 18comic scripts and prevent them from 
+        // initiating duplicate, heavy descrambling tasks in the background.
+        img.removeAttribute('id');
+        img.removeAttribute('data-original');
+        img.removeAttribute('data-src');
       }
     });
 
@@ -105,56 +141,61 @@ export const Comic18Adapter: SiteAdapter = {
       if (!id) return { src: realUrl };
 
       // Load into Image to get dimensions
-      const img = new Image();
-      const blobUrl = URL.createObjectURL(blob);
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-        img.src = blobUrl;
-      });
+      await decodeMutex.lock();
+      try {
+        const img = new Image();
+        const blobUrl = URL.createObjectURL(blob);
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = blobUrl;
+        });
 
-      const imgWidth = img.naturalWidth;
-      const imgHeight = img.naturalHeight;
+        const imgWidth = img.naturalWidth;
+        const imgHeight = img.naturalHeight;
 
-      if (!unsafeWindow.get_num) {
+        if (!unsafeWindow.get_num) {
+          URL.revokeObjectURL(blobUrl);
+          return { src: realUrl };
+        }
+
+        const num = unsafeWindow.get_num(btoa(aid), btoa(id));
+        if (!num || num <= 1) {
+          URL.revokeObjectURL(blobUrl);
+          return { src: realUrl };
+        }
+
+        const canvas = new OffscreenCanvas(imgWidth, imgHeight);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          URL.revokeObjectURL(blobUrl);
+          return { src: realUrl };
+        }
+
+        const cropHeight = Number(imgHeight % num);
+        const sHeight = Math.floor(imgHeight / num);
+        let sy = imgHeight - cropHeight - sHeight;
+        let dy = cropHeight + sHeight;
+        
+        // Draw first piece (includes remainder)
+        ctx.drawImage(img, 0, sy, imgWidth, cropHeight + sHeight, 0, 0, imgWidth, cropHeight + sHeight);
+        
+        // Draw subsequent pieces
+        for (let i = 1; i < num; ++i) {
+          sy -= sHeight;
+          ctx.drawImage(img, 0, sy, imgWidth, sHeight, 0, dy, imgWidth, sHeight);
+          dy += sHeight;
+        }
+
         URL.revokeObjectURL(blobUrl);
-        return { src: realUrl };
+
+        const finalBlob = await canvas.convertToBlob({ type: blob.type, quality: 0.9 });
+        const finalUrl = URL.createObjectURL(finalBlob);
+
+        return { src: finalUrl };
+      } finally {
+        decodeMutex.unlock();
       }
-
-      const num = unsafeWindow.get_num(btoa(aid), btoa(id));
-      if (!num || num <= 1) {
-        URL.revokeObjectURL(blobUrl);
-        return { src: realUrl };
-      }
-
-      const canvas = new OffscreenCanvas(imgWidth, imgHeight);
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        URL.revokeObjectURL(blobUrl);
-        return { src: realUrl };
-      }
-
-      const cropHeight = Number(imgHeight % num);
-      const sHeight = Math.floor(imgHeight / num);
-      let sy = imgHeight - cropHeight - sHeight;
-      let dy = cropHeight + sHeight;
-      
-      // Draw first piece (includes remainder)
-      ctx.drawImage(img, 0, sy, imgWidth, cropHeight + sHeight, 0, 0, imgWidth, cropHeight + sHeight);
-      
-      // Draw subsequent pieces
-      for (let i = 1; i < num; ++i) {
-        sy -= sHeight;
-        ctx.drawImage(img, 0, sy, imgWidth, sHeight, 0, dy, imgWidth, sHeight);
-        dy += sHeight;
-      }
-
-      URL.revokeObjectURL(blobUrl);
-
-      const finalBlob = await canvas.convertToBlob({ type: blob.type, quality: 0.9 });
-      const finalUrl = URL.createObjectURL(finalBlob);
-
-      return { src: finalUrl };
 
     } catch (err) {
       // Fallback to original url
@@ -170,10 +211,11 @@ export const Comic18Adapter: SiteAdapter = {
   },
 
   getNativeImages: () => {
-    const images = Array.from(document.querySelectorAll('.scramble-page img[id], .owl-item .center img[id], .scramble-page canvas[id], .owl-item .center canvas[id]')) as HTMLElement[];
+    const images = Array.from(document.querySelectorAll('.scramble-page img[data-viewer-url], .owl-item .center img[data-viewer-url], .scramble-page canvas[data-viewer-url], .owl-item .center canvas[data-viewer-url]')) as HTMLElement[];
     images.forEach(img => {
-      if (img.id && idToUrlMap.has(img.id)) {
-        img.dataset.viewerUrl = idToUrlMap.get(img.id)!;
+      const originalId = img.dataset.originalId;
+      if (originalId && idToUrlMap.has(originalId)) {
+        img.dataset.viewerUrl = idToUrlMap.get(originalId)!;
       }
     });
     return images;
