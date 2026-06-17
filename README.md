@@ -1,4 +1,4 @@
-# Hentai Reader (Formerly E-Hentai Plus)
+# <img src="src/assets/icon.png" width="48" height="48" align="top" /> Hentai Reader (Formerly E-Hentai Plus)
 
 A generalized multi-site reading framework upgraded from E-Hentai Plus. 
 It provides an enhanced reading experience with infinite scroll, full-screen reader mode, and smart image loading.

@@ -1,4 +1,3 @@
-import { q } from '../utils/dom';
 import { CFG } from '../state/config';
 import { requestQueue } from './request-queue';
 import { store } from '../state/store';
@@ -8,7 +7,6 @@ export interface ImageLoadResult {
   nl: string | null;
 }
 
-const parser = new DOMParser();
 const imageCache = new Map<string, ImageLoadResult>();
 
 async function fetchImageSrc(url: string, retries = 0): Promise<ImageLoadResult | null> {
@@ -20,12 +18,14 @@ async function fetchImageSrc(url: string, retries = 0): Promise<ImageLoadResult 
     }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const html = await response.text();
-    const doc = parser.parseFromString(html, 'text/html');
-    const imgEl = q('#img', doc) as HTMLImageElement | null;
-    const imgSrc = imgEl?.src;
+    
+    // Use fast RegExp instead of synchronous DOMParser to avoid blocking the main thread
+    const srcMatch = html.match(/<img[^>]+id=["']img["'][^>]+src=["']([^"']+)["']/i);
+    const imgSrc = srcMatch ? srcMatch[1] : null;
     if (!imgSrc) throw new Error('Image not found');
     
-    const onerror = imgEl.getAttribute('onerror') || '';
+    const onerrorMatch = html.match(/<img[^>]+id=["']img["'][^>]+onerror=["']([^"']+)["']/i);
+    const onerror = onerrorMatch ? onerrorMatch[1] : '';
     const m = onerror.match(/nl\(['"]([^'"]+)['"]\)/);
     const nlToken = m ? m[1] : null;
 
