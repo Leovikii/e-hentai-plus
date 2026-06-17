@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite';
 import monkey from 'vite-plugin-monkey';
 import UnoCSS from '@unocss/vite';
+import { readFileSync } from 'fs';
+
+const iconBase64 = readFileSync('src/assets/icon.png', 'base64');
 
 export default defineConfig({
   plugins: [
@@ -14,6 +17,7 @@ export default defineConfig({
         },
         namespace: 'http://tampermonkey.net/',
         homepageURL: 'https://github.com/Leovikii/Hentai-Reader',
+        icon64: `data:image/png;base64,${iconBase64}`,
 
         description: {
           '': 'A generalized multi-site reading framework. Provides an enhanced reading experience with infinite scroll, full-screen reader mode, and smart image loading for E-Hentai, 18comic, 4KHD, etc.',

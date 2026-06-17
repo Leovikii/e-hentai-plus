@@ -27,6 +27,17 @@ function setErrorState(
 let virtualizationObserver: IntersectionObserver | null = null;
 let lazyLoadObserver: IntersectionObserver | null = null;
 
+export function disconnectObservers() {
+  if (virtualizationObserver) {
+    virtualizationObserver.disconnect();
+    virtualizationObserver = null;
+  }
+  if (lazyLoadObserver) {
+    lazyLoadObserver.disconnect();
+    lazyLoadObserver = null;
+  }
+}
+
 function initVirtualization() {
   if (virtualizationObserver) return;
   virtualizationObserver = new IntersectionObserver((entries) => {
@@ -218,7 +229,7 @@ export function setupAutoScroll(): void {
       store.isFetching = true;
       store.activeAdapter!.fetchPage(store.nextUrl).then(({ links, nextUrl: nUrl }) => {
         store.currPage++;
-        processBatch(links, store.currPage, document.querySelector('.scroll-mode #gdt, .scroll-mode .gm, .scroll-mode .entry-content, .scroll-mode .wp-block-post-content') as HTMLElement || document.body);
+        processBatch(links, store.currPage, document.querySelector('.scroll-mode #gdt, .scroll-mode .gm, .scroll-mode .entry-content, .scroll-mode .wp-block-post-content, .scroll-mode .post-content') as HTMLElement || document.body);
 
         store.nextUrl = nUrl;
         store.isFetching = false;

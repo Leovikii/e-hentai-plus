@@ -1,4 +1,4 @@
-# Hentai Reader (原 E-Hentai Plus)
+# <img src="src/assets/icon.png" width="48" height="48" align="top" /> Hentai Reader (原 E-Hentai Plus)
 
 由 E-Hentai Plus 升级而来的多站点通用阅读框架。
 为你提供增强阅读体验，支持无限卷轴、全屏阅读器模式和智能图片加载。
