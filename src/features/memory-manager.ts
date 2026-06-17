@@ -23,7 +23,17 @@ export function initMemoryManager(): void {
   if (mainBox) {
     const domObs = new MutationObserver(() => {
       const images = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
-      if (images.length !== store.allImages.length) {
+      let changed = images.length !== store.allImages.length;
+      if (!changed) {
+        for (let i = 0; i < images.length; i++) {
+          if (images[i] !== store.allImages[i]) {
+            changed = true;
+            break;
+          }
+        }
+      }
+      
+      if (changed) {
         store.allImages = images;
         images.forEach(img => {
           if (!img.dataset.observed && img.tagName === 'IMG') {
@@ -48,14 +58,14 @@ export function initMemoryManager(): void {
       
       if (distance > buffer) {
         // Unload far away images to free RAM/GPU
-        if (img.tagName === 'IMG' && (img as HTMLImageElement).src && (img as HTMLImageElement).complete) {
-          img.dataset.recycledSrc = (img as HTMLImageElement).src;
+        if (img.tagName === 'IMG' && img.hasAttribute('src') && (img as HTMLImageElement).complete) {
+          img.dataset.recycledSrc = img.getAttribute('src') || '';
           img.removeAttribute('src');
         }
       } else {
         // Restore images that come back into the buffer zone
-        if (img.tagName === 'IMG' && !(img as HTMLImageElement).src && img.dataset.recycledSrc) {
-          (img as HTMLImageElement).src = img.dataset.recycledSrc;
+        if (img.tagName === 'IMG' && !img.hasAttribute('src') && img.dataset.recycledSrc) {
+          img.setAttribute('src', img.dataset.recycledSrc);
           delete img.dataset.recycledSrc;
         }
       }

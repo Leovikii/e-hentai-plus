@@ -15,6 +15,9 @@ import { initMemoryManager } from './features/memory-manager';
   }
   store.activeAdapter = adapter;
   store.reloadSettings();
+  if (adapter.name === '18comic' || adapter.name === '4KHD') {
+    (store.settings as any).scrollMode = true;
+  }
   const initData = await adapter.init(document);
   if (!initData.links || initData.links.length === 0) return; // Nothing to process
 

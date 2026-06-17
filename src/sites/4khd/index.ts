@@ -129,15 +129,10 @@ export const FourKHDAdapter: SiteAdapter = {
   hideOriginalElements() {
     const HIDDEN_SELECTORS = [
       '.centbtd', '.popup', '.wp-container-13', '.popup-iframe',
-      '#basicExample', '.wp-block-image', '.page-link-box', 'header', 'footer'
+      '#basicExample', '.wp-block-image', '.page-link-box'
     ];
     document.querySelectorAll<HTMLElement>(HIDDEN_SELECTORS.join(',')).forEach(el => {
       el.style.display = 'none';
     });
-  },
-
-  getNativeImages() {
-    const images = Array.from(document.querySelectorAll('figure.wp-block-image img, #basicExample img, .entry-content p img'));
-    return images as HTMLElement[];
   }
 };

@@ -25,6 +25,9 @@ export function createSettingsPanel(): SettingsPanelHandle {
   settingsPanel.className = 'settings-panel';
 
   SETTINGS.forEach(({ label, key }) => {
+    if (key === 'scrollMode' && store.activeAdapter && ['18comic', '4KHD'].includes(store.activeAdapter.name)) {
+      return;
+    }
     const item = document.createElement('div');
     item.className = 'settings-item';
 

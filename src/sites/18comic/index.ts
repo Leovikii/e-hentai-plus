@@ -2,8 +2,6 @@ import type { SiteAdapter, PageLink } from '../../types/site-adapter';
 
 declare const unsafeWindow: any;
 
-const idToUrlMap = new Map<string, string>();
-
 class Mutex {
   private queue: (() => void)[] = [];
   private activeCount = 0;
@@ -55,21 +53,16 @@ export const Comic18Adapter: SiteAdapter = {
         if (scrambleId) urlObj.searchParams.set('18scid', scrambleId);
         
         const viewerUrl = urlObj.toString();
-        (img as HTMLElement).dataset.viewerUrl = viewerUrl;
-        
-        if (img.id) {
-          // Save original id for tracking but remove it so native script fails to bind to it
-          (img as HTMLElement).dataset.originalId = img.id;
-          idToUrlMap.set(img.id, viewerUrl);
-        }
-        
         links.push({ url: viewerUrl });
 
-        // Strip attributes to blind the native 18comic scripts and prevent them from 
-        // initiating duplicate, heavy descrambling tasks in the background.
-        img.removeAttribute('id');
-        img.removeAttribute('data-original');
-        img.removeAttribute('data-src');
+        // We purposefully keep original attributes so native scripts don't crash.
+        // However, to prevent the native script from initiating 300 background Canvas decodes
+        // when we detach these images, we trick it into thinking they are infinitely far away.
+        try {
+          (img as HTMLElement).getBoundingClientRect = () => ({
+            top: 999999, left: 0, right: 0, bottom: 999999, width: 0, height: 0, x: 0, y: 0, toJSON: () => {}
+          });
+        } catch (e) {}
       }
     });
 
@@ -100,12 +93,7 @@ export const Comic18Adapter: SiteAdapter = {
         const urlObj = new URL(imgUrl, window.location.href);
         if (aid) urlObj.searchParams.set('18aid', aid);
         if (scrambleId) urlObj.searchParams.set('18scid', scrambleId);
-        const viewerUrl = urlObj.toString();
-        (img as HTMLElement).dataset.viewerUrl = viewerUrl;
-        if (img.id) {
-          idToUrlMap.set(img.id, viewerUrl);
-        }
-        links.push({ url: viewerUrl });
+        links.push({ url: urlObj.toString() });
       }
     });
 
@@ -210,20 +198,9 @@ export const Comic18Adapter: SiteAdapter = {
     return document.querySelector('.scramble-page') || document.body;
   },
 
-  getNativeImages: () => {
-    const images = Array.from(document.querySelectorAll('.scramble-page img[data-viewer-url], .owl-item .center img[data-viewer-url], .scramble-page canvas[data-viewer-url], .owl-item .center canvas[data-viewer-url]')) as HTMLElement[];
-    images.forEach(img => {
-      const originalId = img.dataset.originalId;
-      if (originalId && idToUrlMap.has(originalId)) {
-        img.dataset.viewerUrl = idToUrlMap.get(originalId)!;
-      }
-    });
-    return images;
-  },
-
   hideOriginalElements: () => {
-    // We shouldn't hide .scramble-page since it's the container
-  },
+    // Restore native headers, only hide scramble if needed (but we don't hide scramble)
+  }
 };
 
 function getNextUrl(doc: Document): string | null {
