@@ -26,6 +26,6 @@ export const i18n = {
   downloading: isZH ? '下载中...' : 'Downloading...',
   requestingNewNode: isZH ? '正在请求新节点...' : 'Requesting New Node...',
   reloading: isZH ? '重新加载中...' : 'Reloading...',
-  loadFailed: isZH ? '加载失败，点击重试' : 'Load Failed. Click to Retry',
+  loadFailed: isZH ? '加载失败' : 'Load Failed',
   waitImagesToLoad: isZH ? '请等待图片加载' : 'Please wait for images to load',
 };
