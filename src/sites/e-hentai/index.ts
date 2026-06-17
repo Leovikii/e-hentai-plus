@@ -139,14 +139,14 @@ export const EHentaiAdapter: SiteAdapter = {
   },
 
   getContainer() {
-    return document.querySelector('#gdt, .gm') as HTMLElement | null;
+    return (document.querySelector('#gdt') || document.querySelector('.gm')) as HTMLElement | null;
   },
 
   hideOriginalElements() {
     const HIDDEN_SELECTORS = [
       '.c1', '.c2', '.c3', '.c4', '.c5', '.c6', '.c7', '.c8',
-      '#gmid', '#gd5', '.ptt', '.ptb', '.gdtl', '.gdtm',
-      '#gdo', '#cdiv', '#taglist', 'table.itg'
+      '.ptt', '.ptb', '.gdtl', '.gdtm',
+      '#gdo', '#cdiv', 'table.itg'
     ];
     document.querySelectorAll<HTMLElement>(HIDDEN_SELECTORS.join(',')).forEach(el => {
       el.style.display = 'none';

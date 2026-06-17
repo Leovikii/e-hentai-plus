@@ -46,6 +46,9 @@ export function createSettingsPanel(): SettingsPanelHandle {
       const newValue = !store.settings[key];
       store.updateSetting(key, newValue);
       toggle.classList.toggle('on', newValue);
+      if (key === 'scrollMode') {
+        window.location.reload();
+      }
     };
 
     item.appendChild(labelEl);
