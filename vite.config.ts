@@ -28,6 +28,7 @@ export default defineConfig({
           'https://e-hentai.org/s/*',
           'https://exhentai.org/s/*',
           '*://*.4khd.com/*',
+          '*://*.xxtt.ink/*',
           '*://*.uuss.uk/*',
           '*://*.ssuu.uk/*',
           '*://*.18comic.vip/*',

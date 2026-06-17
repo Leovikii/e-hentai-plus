@@ -65,7 +65,7 @@ export const FourKHDAdapter: SiteAdapter = {
   name: '4KHD',
   
   match(url: string) {
-    return /https?:\/\/(www\.)?4khd\.com\//.test(url) || /https?:\/\/aynzl\.uuss\.uk\//.test(url) || /https?:\/\/zrxiu\.ssuu\.uk\//.test(url);
+    return url.includes('4khd.com') || url.includes('xxtt.ink') || url.includes('uuss.uk') || url.includes('ssuu.uk');
   },
 
   async init(doc: Document) {
