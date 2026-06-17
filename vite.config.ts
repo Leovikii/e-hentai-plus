@@ -17,7 +17,7 @@ export default defineConfig({
         },
         namespace: 'http://tampermonkey.net/',
         homepageURL: 'https://github.com/Leovikii/Hentai-Reader',
-        icon64: `data:image/png;base64,${iconBase64}`,
+        icon: `data:image/png;base64,${iconBase64}`,
 
         description: {
           '': 'A generalized multi-site reading framework. Provides an enhanced reading experience with infinite scroll, full-screen reader mode, and smart image loading for E-Hentai, 18comic, 4KHD, etc.',
