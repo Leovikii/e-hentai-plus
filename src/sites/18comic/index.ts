@@ -25,7 +25,7 @@ class Mutex {
   }
 }
 
-const decodeMutex = new Mutex(1);
+const decodeMutex = new Mutex(3);
 
 export const Comic18Adapter: SiteAdapter = {
   name: '18comic',
@@ -128,37 +128,34 @@ export const Comic18Adapter: SiteAdapter = {
       const id = fileName.split('.')[0];
       if (!id) return { src: realUrl };
 
-      // Load into Image to get dimensions
+      // Load into ImageBitmap to get dimensions and decode off-thread
       await decodeMutex.lock();
       try {
-        const img = new Image();
-        const blobUrl = URL.createObjectURL(blob);
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = blobUrl;
-        });
-
-        const imgWidth = img.naturalWidth;
-        const imgHeight = img.naturalHeight;
+        const bitmap = await createImageBitmap(blob);
+        const imgWidth = bitmap.width;
+        const imgHeight = bitmap.height;
 
         if (!unsafeWindow.get_num) {
-          URL.revokeObjectURL(blobUrl);
+          bitmap.close();
           return { src: realUrl };
         }
 
         const num = unsafeWindow.get_num(btoa(aid), btoa(id));
         if (!num || num <= 1) {
-          URL.revokeObjectURL(blobUrl);
+          bitmap.close();
           return { src: realUrl };
         }
 
         const canvas = new OffscreenCanvas(imgWidth, imgHeight);
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          URL.revokeObjectURL(blobUrl);
+          bitmap.close();
           return { src: realUrl };
         }
+
+        // Fill with white to prevent transparent WebP/PNG artifacts in JPEG export
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, imgWidth, imgHeight);
 
         const cropHeight = Number(imgHeight % num);
         const sHeight = Math.floor(imgHeight / num);
@@ -166,18 +163,19 @@ export const Comic18Adapter: SiteAdapter = {
         let dy = cropHeight + sHeight;
         
         // Draw first piece (includes remainder)
-        ctx.drawImage(img, 0, sy, imgWidth, cropHeight + sHeight, 0, 0, imgWidth, cropHeight + sHeight);
+        ctx.drawImage(bitmap, 0, sy, imgWidth, cropHeight + sHeight, 0, 0, imgWidth, cropHeight + sHeight);
         
         // Draw subsequent pieces
         for (let i = 1; i < num; ++i) {
           sy -= sHeight;
-          ctx.drawImage(img, 0, sy, imgWidth, sHeight, 0, dy, imgWidth, sHeight);
+          ctx.drawImage(bitmap, 0, sy, imgWidth, sHeight, 0, dy, imgWidth, sHeight);
           dy += sHeight;
         }
 
-        URL.revokeObjectURL(blobUrl);
+        bitmap.close(); // Clean up bitmap memory
 
-        const finalBlob = await canvas.convertToBlob({ type: blob.type, quality: 0.9 });
+        // Export as JPEG for massive encoding performance boost over WebP
+        const finalBlob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.85 });
         const finalUrl = URL.createObjectURL(finalBlob);
 
         return { src: finalUrl };
