@@ -313,13 +313,11 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
     let startIndex = 0;
 
     if (store.settings.scrollMode) {
-      console.log('[overlay debug] ENTER: Scroll mode positioning started');
       let minDistance = Infinity;
 
       store.allImages.forEach((img, index) => {
         const rect = img.getBoundingClientRect();
         const viewportCenter = window.innerHeight / 2;
-        console.log(`[overlay debug] img ${index} rect:`, rect);
         
         if (rect.top <= viewportCenter && rect.bottom >= viewportCenter) {
           startIndex = index;
@@ -335,10 +333,8 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
           }
         }
       });
-      console.log('[overlay debug] ENTER: calculated startIndex for Scroll Mode:', startIndex);
     } else {
       // Non-scroll mode: try to find the native image closest to viewport center
-      console.log('[overlay debug] ENTER: Non-scroll mode positioning started');
       const adapter = store.activeAdapter;
       let nativeImages: HTMLElement[] = [];
       
@@ -352,12 +348,10 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
       }
 
       if (nativeImages.length > 0) {
-        console.log('[overlay debug] ENTER: found', nativeImages.length, 'native images');
         let minDistance = Infinity;
         let bestNativeImg: HTMLElement | null = null;
         nativeImages.forEach((img) => {
           const rect = img.getBoundingClientRect();
-          console.log('[overlay debug] ENTER: native img rect:', rect, img);
           if (rect.width === 0 || rect.height === 0) return;
           
           const viewportCenter = window.innerHeight / 2;
@@ -412,15 +406,12 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
     store.emit('readerModeChanged');
 
     if (store.settings.scrollMode) {
-      console.log('[overlay debug] EXIT: Scroll mode exiting. store.currentImageIndex:', store.currentImageIndex);
       const currentImages = Array.from(qa('.r-img, .r-ph')) as HTMLElement[];
       if (store.currentImageIndex >= 0 && store.currentImageIndex < currentImages.length) {
         const targetImg = currentImages[store.currentImageIndex];
-        console.log('[overlay debug] EXIT: scrolling to targetImg:', targetImg);
         if (targetImg) {
           setTimeout(() => {
             targetImg.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            console.log('[overlay debug] EXIT: scrollIntoView called');
           }, 100);
         }
       }
@@ -437,7 +428,6 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
       }
 
       const targetImgFallback = store.allImages[store.currentImageIndex];
-      console.log('[overlay debug] EXIT: store.currentImageIndex:', store.currentImageIndex, 'targetImgFallback:', targetImgFallback);
       const batchDiv = targetImgFallback?.closest('.page-batch') as HTMLElement | null;
 
       if (batchDiv && batchDiv.dataset.pageUrl) {
@@ -455,16 +445,11 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
         // Find which index this image represents IN THE NATIVE PAGE
         // We can do this by finding the img in nativeImages that has the same src
         const currentSrc = (targetImgFallback as HTMLImageElement)?.dataset?.viewerUrl || (targetImgFallback as HTMLImageElement)?.dataset?.realSrc || (targetImgFallback as HTMLImageElement)?.src;
-        console.log('[overlay debug] EXIT: currentSrc to match:', currentSrc);
         if (currentSrc) {
-          console.log('[overlay debug] EXIT: looping through', nativeImages.length, 'native images to find match');
           const targetNativeImg = nativeImages.find(img => {
             const nativeSrc = (img as HTMLImageElement).dataset?.viewerUrl || (img as HTMLImageElement).dataset?.src || (img as HTMLImageElement).src;
-            console.log('[overlay debug] EXIT: native img', img, 'nativeSrc:', nativeSrc, 'matches?', nativeSrc === currentSrc);
             return nativeSrc === currentSrc;
           });
-          
-          console.log('[overlay debug] EXIT: targetNativeImg result:', targetNativeImg);
 
           if (targetNativeImg) {
             setTimeout(() => {
