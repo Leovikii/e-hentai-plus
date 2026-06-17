@@ -5,18 +5,20 @@ It provides an enhanced reading experience with infinite scroll, full-screen rea
 
 Currently supported websites (with more to come):
 - E-Hentai / ExHentai
+- 18comic
 - 4KHD
 
 [中文](README.zh-CN.md)
 
 ## Features
 
-- **Scroll Mode Toggle** — Enable for infinite scroll with auto next-page loading; disable to keep the original gallery layout untouched
-- **Reader Mode** — Full-screen single-image viewer with keyboard, mouse wheel, scrollbar, and thumbnail panel navigation
-- **Auto Play** — Slideshow with configurable interval, auto-skips failed images
-- **Bidirectional Page Loading** — Load next/previous pages seamlessly in both scroll and reader mode
-- **Smart Image Loading** — Concurrent request queue, exponential backoff retry, rate limit detection, and URL caching
-- **Error Recovery** — Retry button on failed images in both scroll mode and reader mode
+- **Infinite Scroll Mode** — Seamlessly converts multi-page galleries into a continuous vertical scroll with auto-prefetching. Intelligently preserves native page metadata (e.g., tags, titles, comments). Features real-time reloading upon toggling.
+- **Immersive Reader Mode** — A distraction-free, full-screen single-page viewer. Navigate effortlessly via keyboard, mouse wheel, or screen clicks, augmented by a built-in thumbnail sidebar for quick jumping.
+- **Ultra-Smooth Performance Engine** — Utilizes smart memory management and low-level DOM virtualization to automatically unmount off-screen elements. Guarantees a stable 60 FPS scrolling experience without memory overflow, even when loading thousands of high-resolution images.
+- **High-Efficiency 18comic Decoding Engine (New)** — Engineered with a pioneering HTML5 hardware-accelerated decoding and rapid JPEG reconstruction algorithm, specifically designed to bypass 18comic's image scrambling while drastically reducing CPU load and preventing browser freezes.
+- **Smart Anti-Blocking (New)** — Features an intelligent domain feature matching and redirection follower for sites like 4KHD that frequently alter their domains, ensuring uninterrupted script functionality.
+- **Error Recovery** — Equipped with a robust auto-retry mechanism for failed image loads, along with a floating visual indicator for monitoring progress and manual reloading.
+- **Auto Play** — Enjoy an adjustable slideshow mode for a hands-free reading experience.
 
 ## Installation
 

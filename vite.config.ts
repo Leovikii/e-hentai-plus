@@ -16,8 +16,8 @@ export default defineConfig({
         homepageURL: 'https://github.com/Leovikii/Hentai-Reader',
 
         description: {
-          '': 'Infinite scroll & reader mode with image prefetch and floating controls for E-Hentai / ExHentai',
-          'zh-CN': '为 E-Hentai / ExHentai 提供无限滚动和阅读模式，支持图片预取与悬浮控制',
+          '': 'A generalized multi-site reading framework. Provides an enhanced reading experience with infinite scroll, full-screen reader mode, and smart image loading for E-Hentai, 18comic, 4KHD, etc.',
+          'zh-CN': '多站点通用阅读框架，为 E-Hentai、18comic、4KHD 等提供无限滚动、全屏阅读模式、智能预取与硬件加速解码',
         },
         author: 'Viki',
         updateURL: 'https://github.com/Leovikii/Hentai-Reader/releases/latest/download/hentai-reader.user.js',
