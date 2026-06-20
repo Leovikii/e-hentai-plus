@@ -21,7 +21,15 @@ function setErrorState(
       </div>
       <div style="font-size: 14px; color: rgba(255, 255, 255, 0.5); font-family: monospace; letter-spacing: 1px;">P${pIndex}-${index + 1}</div>
     </div>
+    <button class="retry-btn">Retry</button>
   `;
+  const btn = placeholder.querySelector('.retry-btn');
+  if (btn) {
+    btn.addEventListener('click', () => {
+      placeholder.dataset.isFetching = 'false';
+      loadPlaceholderImage(placeholder);
+    });
+  }
 }
 
 let lazyLoadObserver: IntersectionObserver | null = null;

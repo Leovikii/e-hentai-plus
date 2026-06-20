@@ -8,8 +8,8 @@ html.scroll-mode #gdt { display: flex; flex-direction: column; align-items: cent
 
 /* Scroll mode */
 .page-batch { width: 100%; display: flex; flex-direction: column; align-items: center; margin-bottom: 60px; }
-.r-img { display: block; width: auto; max-width: 100%; margin-bottom: 20px; background: transparent; box-shadow: 0 0 20px rgba(0,0,0,0.5); position: relative; }
-.r-ph { color: #555; margin-bottom: 50px; text-align: center; min-height: 400px; display: flex; align-items: center; justify-content: center; font-family: sans-serif; font-size: 18px; border: 1px dashed #333; width: 100%; flex-direction: column; gap: 10px; }
+.r-img { display: block; width: auto; max-width: 100%; margin-bottom: 20px; background: transparent; box-shadow: 0 0 20px rgba(0,0,0,0.5); position: relative; content-visibility: auto; contain-intrinsic-size: 100% 100vh; }
+.r-ph { color: #555; margin-bottom: 50px; text-align: center; min-height: 400px; display: flex; align-items: center; justify-content: center; font-family: sans-serif; font-size: 18px; border: 1px dashed #333; width: 100%; flex-direction: column; gap: 10px; content-visibility: auto; contain-intrinsic-size: 100% 100vh; }
 .r-ph.loading { color: #888; border-color: #555; }
 .r-ph.error { color: #d44; border-color: #d44; }
 .retry-btn { padding: 8px 16px; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-top: 10px; }
@@ -89,8 +89,8 @@ html.scroll-mode #gdt { display: flex; flex-direction: column; align-items: cent
 .sp-thumb-item:hover { border-color: rgba(255,255,255,0.4); }
 .sp-thumb-item.sp-thumb-active { border-color: var(--accent); }
 .sp-thumb-img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
-.sp-thumb-label { position: absolute; bottom: 0; right: 0; padding: 1px 5px; background: rgba(0,0,0,0.5); color: rgba(255,255,255,0.6); font-family: monospace; font-size: 11px; border-radius: 4px 0 0 0; pointer-events: none; }
 .sp-thumb-ph { width: 100%; height: 100%; background: #222; display: flex; align-items: center; justify-content: center; color: #555; font-family: monospace; font-size: 13px; -webkit-user-select: none; user-select: none; }
+.sp-thumb-label { position: absolute; bottom: 0; right: 0; padding: 1px 5px; background: rgba(0,0,0,0.5); color: rgba(255,255,255,0.6); font-family: monospace; font-size: 11px; border-radius: 4px 0 0 0; pointer-events: none; }
 .sp-thumb-counter { padding: 8px 0; text-align: center; color: #999; font-family: monospace; font-size: 13px; border-top: 1px solid rgba(255,255,255,0.08); -webkit-user-select: none; user-select: none; }
 
 /* Status HUD (Top-Center) */
