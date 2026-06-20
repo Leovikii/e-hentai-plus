@@ -3,22 +3,30 @@ import type { SiteAdapter, PageLink } from '../../types/site-adapter';
 declare const unsafeWindow: any;
 
 class Mutex {
-  private queue: (() => void)[] = [];
+  private queue: { key: string, resolve: () => void }[] = [];
   private activeCount = 0;
   constructor(private maxConcurrent: number) {}
 
-  async lock(): Promise<void> {
+  async lock(key: string): Promise<void> {
     if (this.activeCount < this.maxConcurrent) {
       this.activeCount++;
       return;
     }
-    return new Promise(resolve => this.queue.push(resolve));
+    return new Promise(resolve => this.queue.push({ key, resolve }));
+  }
+
+  bump(key: string): void {
+    const idx = this.queue.findIndex(q => q.key === key);
+    if (idx !== -1) {
+      const item = this.queue.splice(idx, 1)[0];
+      this.queue.push(item);
+    }
   }
 
   unlock(): void {
     if (this.queue.length > 0) {
-      const next = this.queue.shift();
-      next?.();
+      const next = this.queue.pop();
+      next?.resolve();
     } else {
       this.activeCount--;
     }
@@ -26,6 +34,7 @@ class Mutex {
 }
 
 const decodeMutex = new Mutex(3);
+const imageCache = new Map<string, Promise<{ src: string }>>();
 
 export const Comic18Adapter: SiteAdapter = {
   name: '18comic',
@@ -119,18 +128,24 @@ export const Comic18Adapter: SiteAdapter = {
         return { src: realUrl };
       }
 
-      // Fetch the blob
-      const res = await fetch(realUrl);
-      if (!res.ok) throw new Error('Failed to fetch image');
-      const blob = await res.blob();
-      
-      const fileName = urlObj.pathname.split('/').pop() || '';
-      const id = fileName.split('.')[0];
-      if (!id) return { src: realUrl };
+      if (imageCache.has(urlStr)) {
+        decodeMutex.bump(urlStr);
+        return imageCache.get(urlStr)!;
+      }
 
-      // Load into ImageBitmap to get dimensions and decode off-thread
-      await decodeMutex.lock();
+      const p = (async () => {
+        // Lock Mutex BEFORE fetching to limit network concurrency as well as CPU
+        await decodeMutex.lock(urlStr);
       try {
+        // Fetch the blob
+        const res = await fetch(realUrl);
+        if (!res.ok) throw new Error('Failed to fetch image');
+        const blob = await res.blob();
+        
+        const fileName = urlObj.pathname.split('/').pop() || '';
+        const id = fileName.split('.')[0];
+        if (!id) return { src: realUrl };
+
         const bitmap = await createImageBitmap(blob);
         const imgWidth = bitmap.width;
         const imgHeight = bitmap.height;
@@ -183,6 +198,11 @@ export const Comic18Adapter: SiteAdapter = {
         decodeMutex.unlock();
       }
 
+      })();
+
+      imageCache.set(urlStr, p);
+      return p;
+
     } catch (err) {
       // Fallback to original url
       const cleanUrl = new URL(urlStr);
@@ -190,6 +210,10 @@ export const Comic18Adapter: SiteAdapter = {
       cleanUrl.searchParams.delete('18scid');
       return { src: cleanUrl.toString() };
     }
+  },
+
+  bumpPriority: (urlStr: string) => {
+    decodeMutex.bump(urlStr);
   },
 
   getContainer: () => {

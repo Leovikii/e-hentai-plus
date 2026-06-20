@@ -24,32 +24,13 @@ function setErrorState(
   `;
 }
 
-let virtualizationObserver: IntersectionObserver | null = null;
 let lazyLoadObserver: IntersectionObserver | null = null;
 
 export function disconnectObservers() {
-  if (virtualizationObserver) {
-    virtualizationObserver.disconnect();
-    virtualizationObserver = null;
-  }
   if (lazyLoadObserver) {
     lazyLoadObserver.disconnect();
     lazyLoadObserver = null;
   }
-}
-
-function initVirtualization() {
-  if (virtualizationObserver) return;
-  virtualizationObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      const img = entry.target as HTMLImageElement;
-      if (entry.isIntersecting) {
-        img.classList.remove('sp-virtualized');
-      } else {
-        img.classList.add('sp-virtualized');
-      }
-    });
-  }, { rootMargin: '3000px' });
 }
 
 export function loadPlaceholderImage(placeholder: HTMLElement) {
@@ -60,6 +41,13 @@ export function loadPlaceholderImage(placeholder: HTMLElement) {
 
   const adapter = store.activeAdapter;
   if (!adapter) return;
+
+  if (placeholder.dataset.isFetching === 'true') {
+    if (adapter.bumpPriority) adapter.bumpPriority(url);
+    return;
+  }
+  placeholder.dataset.isFetching = 'true';
+  placeholder.dataset.lazyLoaded = 'true';
   
   adapter.resolveImage(url).then(res => {
     if (res) {
@@ -121,7 +109,6 @@ export function loadPlaceholderImage(placeholder: HTMLElement) {
           if (img.parentNode) {
             img.parentNode.replaceChild(placeholder, img);
           }
-          virtualizationObserver?.unobserve(img);
         }
       }
 
@@ -137,7 +124,12 @@ export function loadPlaceholderImage(placeholder: HTMLElement) {
 
       img.src = res.src;
       placeholder.parentNode?.replaceChild(img, placeholder);
-      virtualizationObserver?.observe(img);
+      
+      const storeIdx = store.allImages.indexOf(placeholder);
+      if (storeIdx !== -1) {
+        store.allImages[storeIdx] = img;
+        document.dispatchEvent(new CustomEvent('sp-image-loaded', { detail: { index: storeIdx } }));
+      }
     } else {
       setErrorState(placeholder, pIndex, index);
     }
@@ -160,7 +152,7 @@ function initLazyLoad() {
         loadPlaceholderImage(placeholder);
       }
     });
-  }, { rootMargin: '4000px 0px 4000px 0px' });
+  }, { rootMargin: '2000px 0px 2000px 0px' });
 }
 
 export function processBatch(links: PageLink[], pIndex: number, container?: HTMLElement, prepend = false, pageUrl?: string): void {
@@ -171,7 +163,7 @@ export function processBatch(links: PageLink[], pIndex: number, container?: HTML
   }
   const fragment = document.createDocumentFragment();
 
-  initVirtualization();
+
   initLazyLoad();
 
   let targetContainer = container;

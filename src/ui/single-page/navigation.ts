@@ -99,6 +99,10 @@ export function setupNavigation(deps: NavigationDeps): {
     
     accumulatedDelta += normalizedDelta;
     
+    // Clamp accumulated delta to prevent runaway scrolling
+    if (accumulatedDelta > 140) accumulatedDelta = 140;
+    else if (accumulatedDelta < -140) accumulatedDelta = -140;
+    
     if (!isScrolling) {
       isScrolling = true;
       processWheelScroll();
