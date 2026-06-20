@@ -23,7 +23,7 @@ export default defineConfig({
           '': 'A generalized multi-site reading framework. Provides an enhanced reading experience with infinite scroll, full-screen reader mode, and smart image loading for E-Hentai, 18comic, 4KHD, etc.',
           'zh-CN': '多站点通用阅读框架，为 E-Hentai、18comic、4KHD 等提供无限滚动、全屏阅读模式、智能预取与硬件加速解码',
         },
-        author: 'Viki',
+        author: 'Leovikii',
         updateURL: 'https://github.com/Leovikii/Hentai-Reader/releases/latest/download/hentai-reader.user.js',
         downloadURL: 'https://github.com/Leovikii/Hentai-Reader/releases/latest/download/hentai-reader.user.js',
         match: [

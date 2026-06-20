@@ -1,4 +1,5 @@
 import { store } from '../../state/store';
+import { loadPlaceholderImage } from '../../features/scroll-mode';
 
 export interface SidebarHandle {
   update: () => void;
@@ -111,6 +112,16 @@ export function createSidebar(
   }
   window.addEventListener('resize', refreshTrackHeight, { passive: true });
 
+  document.addEventListener('sp-image-loaded', (e: Event) => {
+    const detail = (e as CustomEvent).detail;
+    if (detail && typeof detail.index === 'number') {
+      const idx = detail.index;
+      if (activeItems.has(idx)) {
+        renderItemContent(activeItems.get(idx)!, idx);
+      }
+    }
+  });
+
   // --- THUMBNAIL LOGIC ---
   function clamp(val: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, val));
@@ -144,7 +155,15 @@ export function createSidebar(
     el.classList.toggle('sp-thumb-active', index === store.currentImageIndex);
 
     const img = store.allImages[index];
+    let thumbSrc = '';
+
     if (img && (img as HTMLImageElement).src) {
+      thumbSrc = (img as HTMLImageElement).dataset.thumbSrc || (img as HTMLImageElement).dataset.realSrc || (img as HTMLImageElement).src;
+    } else if (img && (img as HTMLElement).dataset.thumb) {
+      thumbSrc = (img as HTMLElement).dataset.thumb!;
+    }
+
+    if (thumbSrc) {
       let thumbCanvas = el.querySelector('canvas.sp-thumb-img') as HTMLCanvasElement | null;
       if (!thumbCanvas) {
         el.innerHTML = '';
@@ -155,13 +174,12 @@ export function createSidebar(
         label.className = 'sp-thumb-label';
         el.appendChild(label);
       }
-      const realSrc = (img as HTMLImageElement).dataset.thumbSrc || (img as HTMLImageElement).dataset.realSrc || (img as HTMLImageElement).src;
-      if (thumbCanvas.dataset.src !== realSrc) {
-        thumbCanvas.dataset.src = realSrc;
+      if (thumbCanvas.dataset.src !== thumbSrc) {
+        thumbCanvas.dataset.src = thumbSrc;
         
         const tempImg = new Image();
         tempImg.onload = () => {
-          if (thumbCanvas!.dataset.src === realSrc) {
+          if (thumbCanvas!.dataset.src === thumbSrc) {
             thumbCanvas!.width = tempImg.naturalWidth;
             thumbCanvas!.height = tempImg.naturalHeight;
             const ctx = thumbCanvas!.getContext('2d');
@@ -170,19 +188,33 @@ export function createSidebar(
             }
           }
         };
-        tempImg.src = realSrc;
+        tempImg.src = thumbSrc;
       }
       const label = el.querySelector('.sp-thumb-label') as HTMLElement;
       if (label) label.textContent = String(store.imageOffset + index + 1);
     } else {
-      if (!el.querySelector('.sp-thumb-ph')) {
+      let ph = el.querySelector('.sp-thumb-ph') as HTMLElement | null;
+      if (!ph) {
         el.innerHTML = '';
-        const ph = document.createElement('div');
+        ph = document.createElement('div');
         ph.className = 'sp-thumb-ph';
-        ph.textContent = String(store.imageOffset + index + 1);
         el.appendChild(ph);
       }
+      ph.textContent = String(store.imageOffset + index + 1);
     }
+  }
+
+  let lazyLoadTimer: ReturnType<typeof setTimeout> | null = null;
+  function triggerLazyLoadForVisible() {
+    if (lazyLoadTimer) clearTimeout(lazyLoadTimer);
+    lazyLoadTimer = setTimeout(() => {
+      for (const [idx] of activeItems) {
+        const img = store.allImages[idx];
+        if (img && img.classList.contains('r-ph')) {
+          loadPlaceholderImage(img as HTMLElement);
+        }
+      }
+    }, 200);
   }
 
   function renderVisibleItems(): void {
@@ -216,6 +248,8 @@ export function createSidebar(
     }
 
     content.style.transform = `translateY(${-scrollOffset}px)`;
+    
+    triggerLazyLoadForVisible();
   }
 
   function centerOnCurrent(): void {

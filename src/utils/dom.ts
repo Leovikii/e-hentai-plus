@@ -14,7 +14,7 @@ export function hideOriginalElements(): void {
 }
 
 export function isImageReady(img: HTMLImageElement): boolean {
-  if (img.dataset.realSrc) return true;
+  if (img.dataset.realSrc && (img.dataset.realSrc.startsWith('blob:') || img.dataset.realSrc.startsWith('data:'))) return true;
   return !!(img && img.src && !img.src.includes('data:') && img.complete && img.naturalWidth > 0);
 }
 

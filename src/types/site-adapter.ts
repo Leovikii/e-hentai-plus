@@ -20,6 +20,9 @@ export interface SiteAdapter {
   // Given an image url/link, fetch the actual image URL
   resolveImage(url: string, ...args: any[]): Promise<{src: string, nl?: string} | null>;
 
+  // Bump the priority of a currently loading/queued image
+  bumpPriority?: (url: string) => void;
+
   // Fetch the next page and get its links
   fetchPage: (url: string) => Promise<{
     links: PageLink[];

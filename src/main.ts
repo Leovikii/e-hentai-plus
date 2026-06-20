@@ -6,7 +6,7 @@ import { processBatch, setupAutoScroll } from './features/scroll-mode';
 import { initSinglePageMode } from './features/single-page-mode';
 import { createFloatControl } from './ui/float-control';
 import { registerMenuCommands } from './menu-commands';
-import { initMemoryManager } from './features/memory-manager';
+
 
 (async function main() {
   const adapter = SiteManager.getAdapter(window.location.href);
@@ -69,5 +69,5 @@ import { initMemoryManager } from './features/memory-manager';
     setTimeout(() => spmHandle.open(), 1000);
   }
 
-  initMemoryManager();
+
 })();

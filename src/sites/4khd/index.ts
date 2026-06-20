@@ -8,11 +8,18 @@ function extract4KHDImages(doc: Document): PageLink[] {
   const images = Array.from(qa('figure.wp-block-image img, #basicExample img, .entry-content p img', doc));
   return images.map(img => {
     let src = (img as HTMLImageElement).src;
+    
     let thumb = src;
+    thumb = thumb.replace(/i\d\.wp\.com\//, '');
+    thumb = thumb.replace('pic.4khd.com', 'img.4khd.com');
+    thumb = thumb.replace(/\?.+$/, '');
+    thumb = thumb.replace(/\/w\d+-rw\//, '/w300-h300-rw/');
+
     src = src.replace(/i\d\.wp\.com\//, '');
     src = src.replace('pic.4khd.com', 'img.4khd.com');
     src = src.replace(/\?.+$/, '');
     src = src.replace(/\/w\d+-rw\//, '/w2500-h2500-rw/');
+    
     return { url: src, thumb };
   }).filter(link => link.url && !link.url.includes('avatar')); // filter out possible junk
 }

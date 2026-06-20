@@ -39,6 +39,7 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
 
   let loadPollTimer: ReturnType<typeof setInterval> | null = null;
   let loadTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
+  let networkTriggerTimer: ReturnType<typeof setTimeout> | null = null;
   let loadObserver: MutationObserver | null = null;
 
   function clearLoadPoll(): void {
@@ -49,6 +50,10 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
     if (loadTimeoutTimer) {
       clearTimeout(loadTimeoutTimer);
       loadTimeoutTimer = null;
+    }
+    if (networkTriggerTimer) {
+      clearTimeout(networkTriggerTimer);
+      networkTriggerTimer = null;
     }
     if (loadObserver) {
       loadObserver.disconnect();
@@ -125,17 +130,6 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
       return;
     }
 
-    if (img.classList.contains('r-ph') && !img.dataset.lazyLoaded) {
-      img.dataset.lazyLoaded = 'true';
-      loadPlaceholderImage(img as HTMLElement);
-    }
-
-    const nextImg = store.allImages[idx + 1];
-    if (nextImg && nextImg.classList.contains('r-ph') && !nextImg.dataset.lazyLoaded) {
-      nextImg.dataset.lazyLoaded = 'true';
-      loadPlaceholderImage(nextImg as HTMLElement);
-    }
-
     const imgSrc = (img as HTMLImageElement).dataset.realSrc || (img as HTMLImageElement).src;
     applyOverlaySrc(imgSrc, img);
     currentImage.style.display = 'block';
@@ -146,9 +140,25 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
 
     sidebar.update();
 
-    if (!isImageReady(img as HTMLImageElement)) {
-      startLoadPoll(idx);
-    }
+    // Defer actual network fetching to avoid clogging queue when scrolling fast
+    networkTriggerTimer = setTimeout(() => {
+      // Re-fetch in case it changed
+      const currentImg = store.allImages[store.currentImageIndex];
+      if (!currentImg) return;
+
+      if (currentImg.classList.contains('r-ph')) {
+        loadPlaceholderImage(currentImg as HTMLElement);
+      }
+
+      const nextImg = store.allImages[store.currentImageIndex + 1];
+      if (nextImg && nextImg.classList.contains('r-ph')) {
+        loadPlaceholderImage(nextImg as HTMLElement);
+      }
+
+      if (!isImageReady(currentImg as HTMLImageElement)) {
+        startLoadPoll(store.currentImageIndex);
+      }
+    }, 150);
   }
 
   function startLoadPoll(idx: number): void {
