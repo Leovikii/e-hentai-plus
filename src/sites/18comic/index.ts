@@ -51,6 +51,7 @@ export const Comic18Adapter: SiteAdapter = {
     const scrambleId = scrambleMatch ? scrambleMatch[1] : (unsafeWindow.scramble_id ? String(unsafeWindow.scramble_id) : '');
 
     const links: PageLink[] = [];
+    const seenUrls = new Set<string>();
     const imgs = doc.querySelectorAll('.scramble-page img[id], .owl-item .center img[id]');
     
     imgs.forEach((img: Element) => {
@@ -62,7 +63,10 @@ export const Comic18Adapter: SiteAdapter = {
         if (scrambleId) urlObj.searchParams.set('18scid', scrambleId);
         
         const viewerUrl = urlObj.toString();
-        links.push({ url: viewerUrl });
+        if (!seenUrls.has(viewerUrl)) {
+          seenUrls.add(viewerUrl);
+          links.push({ url: viewerUrl });
+        }
 
         // We purposefully keep original attributes so native scripts don't crash.
         // However, to prevent the native script from initiating 300 background Canvas decodes
@@ -94,6 +98,7 @@ export const Comic18Adapter: SiteAdapter = {
     const scrambleId = scrambleMatch ? scrambleMatch[1] : '';
 
     const links: PageLink[] = [];
+    const seenUrls = new Set<string>();
     const imgs = doc.querySelectorAll('.scramble-page img[id], .owl-item .center img[id]');
     
     imgs.forEach((img: Element) => {
@@ -102,7 +107,11 @@ export const Comic18Adapter: SiteAdapter = {
         const urlObj = new URL(imgUrl, window.location.href);
         if (aid) urlObj.searchParams.set('18aid', aid);
         if (scrambleId) urlObj.searchParams.set('18scid', scrambleId);
-        links.push({ url: urlObj.toString() });
+        const viewerUrl = urlObj.toString();
+        if (!seenUrls.has(viewerUrl)) {
+          seenUrls.add(viewerUrl);
+          links.push({ url: viewerUrl });
+        }
       }
     });
 
@@ -221,7 +230,11 @@ export const Comic18Adapter: SiteAdapter = {
   },
 
   hideOriginalElements: () => {
-    // Restore native headers, only hide scramble if needed (but we don't hide scramble)
+    const scramblePages = Array.from(document.querySelectorAll('.scramble-page'));
+    for (let i = 1; i < scramblePages.length; i++) {
+      scramblePages[i].remove();
+    }
+    document.querySelectorAll('.owl-carousel').forEach(el => el.remove());
   }
 };
 
