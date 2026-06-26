@@ -146,13 +146,12 @@ export function createSinglePageOverlay(deps: SinglePageOverlayDeps): SinglePage
       const currentImg = store.allImages[store.currentImageIndex];
       if (!currentImg) return;
 
-      if (currentImg.classList.contains('r-ph')) {
-        loadPlaceholderImage(currentImg as HTMLElement);
-      }
-
-      const nextImg = store.allImages[store.currentImageIndex + 1];
-      if (nextImg && nextImg.classList.contains('r-ph')) {
-        loadPlaceholderImage(nextImg as HTMLElement);
+      // Preload current and next 3 images
+      for (let i = 0; i <= 3; i++) {
+        const targetImg = store.allImages[store.currentImageIndex + i];
+        if (targetImg && targetImg.classList.contains('r-ph')) {
+          loadPlaceholderImage(targetImg as HTMLElement);
+        }
       }
 
       if (!isImageReady(currentImg as HTMLImageElement)) {

@@ -7,12 +7,12 @@ const parser = new DOMParser();
 function extract4KHDImages(doc: Document): PageLink[] {
   const images = Array.from(qa('figure.wp-block-image img, #basicExample img, .entry-content p img', doc));
   return images.map(img => {
-    let src = (img as HTMLImageElement).src;
+    let src = img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || (img as HTMLImageElement).src;
     
     let thumb = src;
     thumb = thumb.replace(/i\d\.wp\.com\//, '');
     thumb = thumb.replace('pic.4khd.com', 'img.4khd.com');
-    thumb = thumb.replace(/\?.+$/, '');
+    // Do not strip query parameters for thumbnails to preserve server-side resizing
     thumb = thumb.replace(/\/w\d+-rw\//, '/w300-h300-rw/');
 
     src = src.replace(/i\d\.wp\.com\//, '');

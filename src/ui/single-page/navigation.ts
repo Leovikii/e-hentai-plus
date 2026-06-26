@@ -19,6 +19,15 @@ export function setupNavigation(deps: NavigationDeps): {
     return document.querySelectorAll('.r-ph').length > 0;
   }
 
+  function isCurrentImageLoading(): boolean {
+    const img = store.allImages[store.currentImageIndex];
+    if (!img) return true;
+    if (img.classList.contains('r-ph') || img.classList.contains('loading') || img.classList.contains('error')) return true;
+    const htmlImg = img as HTMLImageElement;
+    if (htmlImg.tagName === 'IMG' && (!htmlImg.complete || htmlImg.naturalWidth === 0)) return true;
+    return false;
+  }
+
   function syncAllImages(): void {
     const freshImages = Array.from(qa('.r-img')) as HTMLImageElement[];
     if (freshImages.length !== store.allImages.length) {
@@ -71,14 +80,17 @@ export function setupNavigation(deps: NavigationDeps): {
 
     const threshold = 70;
     const now = Date.now();
+    const isLoading = isCurrentImageLoading();
+    // Use 600ms if loading to wait for image, otherwise 60ms to allow rapid scrolling
+    const cooldown = isLoading ? 600 : 60;
     
-    if (Math.abs(accumulatedDelta) >= threshold && (now - lastFlipTime) >= 40) {
+    if (Math.abs(accumulatedDelta) >= threshold && (now - lastFlipTime) >= cooldown) {
       if (accumulatedDelta > 0) {
         nextImage();
       } else {
         previousImage();
       }
-      accumulatedDelta = accumulatedDelta > 0 ? accumulatedDelta - threshold : accumulatedDelta + threshold;
+      accumulatedDelta = 0;
       lastFlipTime = now;
     }
 

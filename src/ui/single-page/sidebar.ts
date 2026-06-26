@@ -180,11 +180,18 @@ export function createSidebar(
         const tempImg = new Image();
         tempImg.onload = () => {
           if (thumbCanvas!.dataset.src === thumbSrc) {
-            thumbCanvas!.width = tempImg.naturalWidth;
-            thumbCanvas!.height = tempImg.naturalHeight;
+            const MAX_W = 300;
+            let w = tempImg.naturalWidth;
+            let h = tempImg.naturalHeight;
+            if (w > MAX_W) {
+              h = (h * MAX_W) / w;
+              w = MAX_W;
+            }
+            thumbCanvas!.width = w;
+            thumbCanvas!.height = h;
             const ctx = thumbCanvas!.getContext('2d');
             if (ctx) {
-              ctx.drawImage(tempImg, 0, 0);
+              ctx.drawImage(tempImg, 0, 0, w, h);
             }
           }
         };
